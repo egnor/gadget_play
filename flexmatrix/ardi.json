@@ -1,0 +1,22 @@
+{
+	"daemon": {
+		"port": "",
+		"logLevel": "fatal"
+	},
+	"platforms": {
+		"arduino:avr": "1.8.3"
+	},
+	"boardUrls": [],
+	"libraries": {
+		"FastLED": "3.4.0"
+	},
+	"builds": {
+		"flexmatrix": {
+			"directory": "/home/egnor/source/gadget_play/flexmatrix",
+			"sketch": "/home/egnor/source/gadget_play/flexmatrix/flexmatrix.ino",
+			"baud": 115200,
+			"fqbn": "arduino:avr:uno",
+			"props": {}
+		}
+	}
+}

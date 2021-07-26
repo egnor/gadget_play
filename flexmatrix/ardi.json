@@ -8,6 +8,7 @@
 	},
 	"boardUrls": [],
 	"libraries": {
+		"Adafruit MPR121": "1.1.1",
 		"FastLED": "3.4.0"
 	},
 	"builds": {

@@ -21,7 +21,7 @@ static Adafruit_MPR121 touch;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("=== flexmatrix demo starting ===");
+  Serial.println("=== flexmatrix demo starting! ===");
 
   FastLED.addLeds<NEOPIXEL, 11>(leds, leds.len);
 
@@ -42,9 +42,31 @@ void loop() {
       const float r = sqrtf(dx * dx + dy * dy);
       const float ang = atan2f(dy, dx);
       const uint8_t hue = (ang + frame * 0.1f) * 128 / M_PI;
-      const uint8_t sat = min(255, r * 256 / 7.0f);
-      pixel(&leds, x, y)->setHSV(hue, sat, 255);
+      const uint8_t sat = 255;  // min(255, r * 256 / 7.0f);
+      pixel(&leds, x, y)->setHSV(hue, sat, 128);
     }
+  }
+
+  const CRGB off(0, 0, 0), on(255, 255, 255);
+  for (uint8_t s = 0; s < 12; ++s) {
+    const CRGB &color = touched & (1 << s) ? on : off;
+    for (uint8_t y = 3 + (s / 6) * 8; y < 6 + (s / 6) * 8; ++y)
+      for (uint8_t x = 2 + (s % 6) * 2; x < 4 + (s % 6) * 2; ++x)
+        *pixel(&leds, x, y) = color;
+  }
+
+  const CRGB border(32, 32, 32);
+  for (uint8_t x = 1; x < 15; ++x) {
+    *pixel(&leds, x, 2) = border;
+    *pixel(&leds, x, 6) = border;
+    *pixel(&leds, x, 10) = border;
+    *pixel(&leds, x, 14) = border;
+  }
+  for (uint8_t y = 3; y < 6; ++y) {
+    *pixel(&leds, 1, y) = border;
+    *pixel(&leds, 14, y) = border;
+    *pixel(&leds, 1, y + 8) = border;
+    *pixel(&leds, 14, y + 8) = border;
   }
 
   // for (uint8_t v = 0; v < 16; ++v) {

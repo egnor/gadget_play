@@ -16,22 +16,19 @@ parser.add_argument("--packet_size", type=any_base_int, default=20)
 parser.add_argument("hex_file", help="bytes to send")
 args = parser.parse_args()
 
-name_chunks = {}
+print(f"=== Loading {args.hex_file} ===")
+chunks = [b""]
+with open(args.hex_file) as hex_file:
+    for line in hex_file:
+        line = line.strip().replace(":", " ")
+        if not line:
+            chunks.extend([b""] if chunks[-1] else [])
+        elif not line.startswith("#"):
+            line_data = bytes(int(w, 16) for w in line.split() if w)
+            chunks[-1] = chunks[-1] + line_data
 
-print("=== Loading hex data ===")
-for name in args.hex_file:
-    name_chunks[name] = chunks = [b""]
-    with open(name) as hex_file:
-        for line in hex_file:
-            line = line.strip().replace(":", " ")
-            if not line:
-                chunks.extend([b""] if chunks[-1] else [])
-            elif not line.startswith("#"):
-                line_data = bytes(int(w, 16) for w in line.split() if w)
-                chunks[-1] = chunks[-1] + line_data
-
-    lengths = ", ".join(f"{len(c)}b" for c in chunks)
-    print(f"{name}: {len(chunks)} chunks ({lengths})")
+lengths = ", ".join(f"{len(c)}b" for c in chunks)
+print(f"{len(chunks)} chunks ({lengths})")
 print()
 
 address = args.address
@@ -74,15 +71,14 @@ with bluepy.btle.Peripheral(address, iface=args.interface) as per:
         sys.exit(1)
     print()
 
+    print(f"=== Sending data ===")
     char = characteristics[0]
-    for name, chunks in name_chunks.items():
-        print(f"=== Sending {name} ===")
-        for chunk in chunks:
-            for start in range(0, len(chunk), args.packet_size):
-                packet = chunk[start : start + args.packet_size]
-                print("Sending:", " ".join(f"{b:02x}" for b in packet))
-                char.write(packet)
+    for chunk in chunks:
+        for start in range(0, len(chunk), args.packet_size):
+            packet = chunk[start : start + args.packet_size]
+            print("Sending:", " ".join(f"{b:02x}" for b in packet))
+            char.write(packet)
 
-            value = char.read()
-            print("Read:", " ".join(f"{b:02x}" for b in value))
-        print()
+        value = char.read()
+        print("Read:", " ".join(f"{b:02x}" for b in value))
+    print()

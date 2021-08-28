@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix="bugreport.") as temp_dir:
     print()
 
     zip_path = f"{zip_basename}.zip"
-    print(f"=== opening {zip_path} ===")
+    print(f"=== Opening {zip_path} ===")
     with zipfile.ZipFile(zip_path) as zip_file:
         for zip_info in zip_file.infolist():
             if zip_info.filename.endswith("/btsnoop_hci.log"):

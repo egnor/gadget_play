@@ -50,14 +50,13 @@ tshark = subprocess.run(
 
 for packet in json.loads(tshark.stdout):
     layers = packet["_source"]["layers"]
+    if "_ws.malformed" in layers:
+        continue
 
     def lookup(path, decode=lambda x: int(x, 0), json=layers):
         for part in path.split("/"):
             json = json.get(part, {}) if isinstance(json, dict) else None
         return decode(json) if json else None
-
-    if "_ws.malformed" in layers:
-        continue
 
     epoch = lookup("frame/frame.time_epoch", decode=float)
     time = datetime.datetime.fromtimestamp(epoch)

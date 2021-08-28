@@ -8,3 +8,4 @@ os.chdir(str(Path(__file__).parent.parent))
 
 check_call(["black", "-l", "80", "."])
 check_call(["isort", "."])
+check_call(["mypy", "."])

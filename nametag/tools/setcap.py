@@ -2,6 +2,6 @@
 
 import subprocess
 
-from bluepy.btle import helperExe
+from bluepy.btle import helperExe  # type: ignore
 
-subprocess.check_call(["sudo", "setcap", "cap_net_admin=ep", helperExe])
+subprocess.run(["sudo", "setcap", "cap_net_admin=ep", helperExe], check=True)

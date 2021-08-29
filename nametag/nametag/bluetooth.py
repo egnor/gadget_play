@@ -3,11 +3,16 @@
 import contextlib
 import logging
 import time
-from typing import Dict, List, Optional, Set
+from collections.abc import Iterable
+from typing import Dict, Optional, Set, Tuple
 
 import bluepy.btle  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+
+class ExpectFailure(bluepy.btle.BTLEException):
+    pass
 
 
 class Device:
@@ -20,46 +25,55 @@ class Device:
             raise bluepy.btle.BTLEException(message)
 
         self._characteristic = characteristics[0]
-        self._handle = self._characteristic.getHandle()
         descriptors = self._characteristic.getDescriptors(forUUID=0x2902)
         if len(descriptors) != 1:
             message = "Found {len(descriptors)} CCCD entries for FFF0.FFF1"
             raise bluepy.btle.BTLEException(message)
 
-        self._listener = _DeviceListener()
+        addr = self._peripheral.addr
+        handle = self._characteristic.getHandle()
+        self._listener = _DeviceListener(address=addr, handle=handle)
         self._peripheral.withDelegate(self._listener)
         descriptors[0].write(b"\1\0")  # enable notifications
+        logger.info(f"({addr}) Nametag ready!")
 
-        self._pending = 0
-        logger.info(f"({peripheral.addr}) Nametag ready!")
-
-    def send_packets(self, packets: List[bytes]):
-        for packet in packets:
-            addr = self._peripheral.addr
-            logger.debug(f"({addr})\n      Sending: {packet.hex(' ')}")
-            self._listener.notified.clear()
-            self._characteristic.write(packet)
-            self._pending += len(packet)
-            if self._pending > 140 or len(packet) < 20 or packet[-1:] == b"\3":
-                if self._handle not in self._listener.notified:
-                    logger.debug(f"({addr}) Wait for notify...")
+    def send_and_expect(self, *, pairs: Iterable[Tuple[bytes, bytes]]):
+        addr = self._peripheral.addr
+        for send, expect in pairs:
+            logger.debug(f"({addr})\n      Sending: {send.hex(' ')}")
+            if send:
+                self._listener.received.clear()
+                self._characteristic.write(send)
+            if expect:
+                expect_hex = "[*]" if expect == b"*" else expect.hex(" ")
+                if expect in self._listener.received:
+                    logger.debug(f"({addr})\n   >> Already: {expect_hex}")
+                elif expect:
+                    logger.debug(f"({addr})\n  ... Waiting: {expect_hex}")
                     self._peripheral.waitForNotifications(1.0)
-                    if self._handle not in self._listener.notified:
-                        logger.warn(f"({addr}) No notification")
-                self._pending = 0
+                    if expect not in self._listener.received:
+                        message = f"Never got expected reply: {expect_hex}"
+                        raise ExpectFailure(message)
 
 
 class _DeviceListener(bluepy.btle.DefaultDelegate):
-    def __init__(self):
+    def __init__(self, *, address: str, handle: int):
         bluepy.btle.DefaultDelegate.__init__(self)
-        self.notified: Set[int] = set()
+        self._address = address
+        self._handle = handle
+        self.received: Set[bytes] = set()
 
     def handleNotification(self, handle, data):
-        logger.debug(f"Notification (h#{handle}):\n      Data: {data.hex(' ')}")
-        self.notified.add(handle)
+        addr = self._address
+        if handle == self._handle:
+            logger.debug(f"({addr})\n   => Receive: {data.hex(' ')}")
+            self.received.add(data)
+            self.received.add(b"*")  # Match wildcard expectations.
+        else:
+            logger.warn(f"({addr}) Unexpected notify handle #{handle}")
 
 
-def scan_devices(interface: int = 0) -> Dict[str, str]:
+def scan_devices(*, interface: int = 0) -> Dict[str, str]:
     out: Dict[str, str] = {}
     scanner = bluepy.btle.Scanner(iface=interface)
     for dev in scanner.scan(timeout=2):
@@ -77,6 +91,7 @@ def scan_devices(interface: int = 0) -> Dict[str, str]:
 
 @contextlib.contextmanager
 def device_open(
+    *,
     address: Optional[str] = None,
     code: Optional[str] = None,
     interface: int = 0,
@@ -93,7 +108,7 @@ def device_open(
         elif not devices:
             raise bluepy.btle.BTLEException("No nametags found")
         elif len(devices) > 1:
-            message = "Multiple nametags found:\n" + "\n".join(
+            message = "Multiple nametags (address needed):\n" + "\n".join(
                 f"  {k} ({v})" for k, v in devices.items()
             )
             raise bluepy.btle.BTLEException(message)
@@ -110,7 +125,7 @@ def device_open(
 class RetryDevice:
     """Wrapper for Device that reconnects on Bluetooth errors."""
 
-    def __init__(self, exit_stack, timeout=None, **kwargs):
+    def __init__(self, *, exit_stack, timeout=None, **kwargs):
         self._exit_stack = exit_stack
         self._timeout = timeout
         self._open_kwargs = kwargs
@@ -118,16 +133,18 @@ class RetryDevice:
         try:
             self._connect_if_necessary()
         except bluepy.btle.BTLEException as e:
-            logging.warn(f"Initial Bluetooth failure, will retry:\n      {e}")
+            exc = f"\n{e}".replace("\n", "\n      ")
+            logging.warn(f"Initial Bluetooth failure, will retry:{exc}")
 
-    def send_packets(self, packets: List[bytes]):
+    def send_and_expect(self, *, pairs: Iterable[Tuple[bytes, bytes]]):
         start_time = time.time()
+        pairs = list(pairs)
         while True:
             try:
                 self._connect_if_necessary()
-                self._device.send_packets(packets)
+                self._device.send_and_expect(pairs=pairs)
                 return
-            except bluepy.btle.BTLEException:
+            except bluepy.btle.BTLEException as e:
                 self._device = None
                 self._exit_stack.close()
                 elapsed = time.time() - start_time
@@ -135,7 +152,8 @@ class RetryDevice:
                     timeout = f"{elapsed}s > {self._timeout}s timeout"
                     logging.warn(f"Bluetooth failure, giving up ({timeout})")
                     raise
-                logging.warn(f"Bluetooth failure, will retry:\n      {e}")
+                exc = f"\n{e}".replace("\n", "\n      ")
+                logging.warn(f"Bluetooth failure, will retry:{exc}")
 
     def _connect_if_necessary(self):
         if not self._device:

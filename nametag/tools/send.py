@@ -21,25 +21,23 @@ parser.add_argument("--interface", type=int, default=0, help="HCI interface")
 device_args = parser.add_mutually_exclusive_group()
 device_args.add_argument("--address", help="MAC to address")
 device_args.add_argument("--code", help="Device code to find")
-source_args = parser.add_mutually_exclusive_group(required=True)
+source_args = parser.add_argument_group()
 source_args.add_argument("--packets", help="raw packets hex file")
 source_args.add_argument("--glyphs", help="glyph text hex file")
+source_args.add_argument("--mode", type=int, help="mode to set")
+source_args.add_argument("--speed", type=int, help="speed to set")
+source_args.add_argument("--brightness", type=int, help="brightness to set")
 args = parser.parse_args()
 
-packets: List[bytes] = []
+send_expect: List[nametag.protocol.SendExpectPair] = []
 
 if args.packets:
     print(f"=== Loading packets: {args.packets} ===")
     with open(args.packets) as hex_file:
-        packets = [b""]
         for line in hex_file:
             line = line.strip().replace(":", " ")
-            if not line:
-                packets.extend([b""] if packets[-1] else [])
-            elif not line.startswith("#"):
-                packets[-1] += bytes.fromhex(line)
-                while len(packets[-1]) > 20:
-                    packets[-1:] = [packets[-1][:20], packets[-1][20:]]
+            pair = (bytes.fromhex(line), b"") if line else (b"", b"*")
+            send_expect.append(pair)
 
 if args.glyphs:
     print(f"=== Loading glyphs: {args.glyphs} ===")
@@ -50,14 +48,26 @@ if args.glyphs:
             if line:
                 glyphs.append(bytes.fromhex(line))
 
-    packets = nametag.protocol.packets_from_glyphs(glyphs)
+    send_expect.extend(nametag.protocol.show_glyphs(glyphs))
 
-print(f"{len(packets)} packets loaded")
+if args.mode is not None:
+    print(f"=== Setting mode {args.mode} ===")
+    send_expect.extend(nametag.protocol.set_mode(args.mode))
+
+if args.speed is not None:
+    print(f"=== Setting speed {args.speed} ===")
+    send_expect.extend(nametag.protocol.set_speed(args.speed))
+
+if args.brightness is not None:
+    print(f"=== Setting brightness {args.brightness} ===")
+    send_expect.extend(nametag.protocol.set_brightness(args.brightness))
+
+print(f"{len(send_expect)} packets loaded")
 print()
 
 print("=== Connecting to nametag ===")
 with nametag.bluetooth.retry_device_open(
     address=args.address, code=args.code, interface=args.interface
 ) as tag:
-    tag.send_packets(packets)
+    tag.send_and_expect(pairs=send_expect)
     print()

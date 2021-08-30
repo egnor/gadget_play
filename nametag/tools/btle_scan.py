@@ -6,7 +6,8 @@ import bluepy.btle  # type: ignore
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--interface", type=int, default=0, help="HCI interface")
-parser.add_argument("--time", type=int, default=10, help="Scan seconds")
+parser.add_argument("--time", type=int, default=2, help="Scan seconds")
+parser.add_argument("--search", default="CoolLED", help="Ad value substring")
 mac_group = parser.add_mutually_exclusive_group()
 mac_group.add_argument("--public", help="Public-type MAC to probe")
 mac_group.add_argument("--random", help="Random-type MAC to probe")
@@ -52,9 +53,13 @@ else:
 
     print(f"Starting scan ({args.time}sec)...")
     devices = scanner.scan(timeout=args.time)
+    matching = [
+        dev for dev in devices
+        if any(args.search in v for a, d, v in dev.getScanData())
+    ]
 
-    print(f"Found {len(devices)} devices:")
-    for dev in devices:
+    print(f'Of {len(devices)} devices, {len(matching)} match "{args.search}":')
+    for dev in matching:
         print(
             f"=== {dev.addrType}={dev.addr} @hci{dev.iface}"
             f" {'' if dev.connectable else '!'}conn"

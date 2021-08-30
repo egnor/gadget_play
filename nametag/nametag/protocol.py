@@ -6,8 +6,7 @@ from collections.abc import Collection, Iterable
 from functools import reduce
 from typing import Optional, Tuple
 
-SendExpectPair = Tuple[bytes, bytes]
-SendExpectPairs = Iterable[SendExpectPair]
+SendExpectPairs = Iterable[Tuple[bytes, bytes]]
 
 
 def chunks(*, data: bytes, size: int, expect=b"") -> SendExpectPairs:

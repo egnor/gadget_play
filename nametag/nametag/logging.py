@@ -18,7 +18,7 @@ class _LogFormatter(logging.Formatter):
         elif record.levelno >= logging.ERROR:
             out = f"🔥 {out}"
         elif record.levelno >= logging.WARNING:
-            out = f"⚠️  {out}"
+            out = f"⚠️ {out}"
         else:
             out = f"ℹ️ {out}"
         if record.exc_info and not record.exc_text:

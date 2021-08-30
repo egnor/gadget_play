@@ -5,9 +5,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import List
-
-import bluepy.btle  # type: ignore
+from typing import List, Tuple
 
 sys.path.append(str(Path(__file__).parent.parent))
 import nametag.bluetooth
@@ -29,7 +27,7 @@ source_args.add_argument("--speed", type=int, help="speed to set")
 source_args.add_argument("--brightness", type=int, help="brightness to set")
 args = parser.parse_args()
 
-send_expect: List[nametag.protocol.SendExpectPair] = []
+send_expect: List[Tuple[bytes, bytes]] = []
 
 if args.packets:
     print(f"=== Loading packets: {args.packets} ===")
@@ -66,7 +64,7 @@ print(f"{len(send_expect)} packets loaded")
 print()
 
 print("=== Connecting to nametag ===")
-with nametag.bluetooth.retry_device_open(
+with nametag.bluetooth.retry_connection(
     address=args.address, code=args.code, interface=args.interface
 ) as tag:
     tag.send_and_expect(pairs=send_expect)

@@ -4,13 +4,13 @@ import contextlib
 import logging
 import time
 from collections.abc import Iterable
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import List, NamedTuple, Optional, Set
 
 import bluepy.btle  # type: ignore
 
-logger = logging.getLogger(__name__)
+from .protocol import ProtocolStep
 
-SendExpectPairs = Iterable[Tuple[bytes, bytes]]
+logger = logging.getLogger(__name__)
 
 
 class BluetoothError(Exception):
@@ -43,7 +43,7 @@ class Connection:
         except bluepy.btle.BTLEException as e:
             raise BluetoothError(str(e))
 
-    def send_and_expect(self, *, pairs: SendExpectPairs, timeout=1.0):
+    def send_and_expect(self, *, pairs: Iterable[ProtocolStep], timeout=1.0):
         prefix = f"({self.address})\n      "
         for send, expect in pairs:
             if send:
@@ -80,7 +80,7 @@ class _Listener(bluepy.btle.DefaultDelegate):
     def handleNotification(self, handle, data):
         addr = self._address
         if handle == self._handle:
-            logger.debug(f"({addr})\n   => Receive: {data.hex(' ')}")
+            logger.debug(f"({addr})\n      => Notify: {data.hex(' ')}")
             self.received.add(data)
             self.received.add(b"*")  # Match wildcard expectations.
         else:
@@ -170,7 +170,7 @@ class RetryConnection:
             exc = f"\n{e}".replace("\n", "\n      ")
             logging.warn(f"Initial Bluetooth failure, will retry:{exc}")
 
-    def send_and_expect(self, *, pairs: Iterable[Tuple[bytes, bytes]]):
+    def send_and_expect(self, *, pairs: Iterable[ProtocolStep]):
         start_time = time.monotonic()
         pairs = list(pairs)
         while True:

@@ -54,7 +54,8 @@ else:
     print(f"Starting scan ({args.time}sec)...")
     devices = scanner.scan(timeout=args.time)
     matching = [
-        dev for dev in devices
+        dev
+        for dev in devices
         if any(args.search in v for a, d, v in dev.getScanData())
     ]
 

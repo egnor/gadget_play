@@ -2,9 +2,8 @@
 
 import operator
 import struct
-from collections.abc import Collection, Iterable
 from functools import reduce
-from typing import NamedTuple, Optional, Tuple
+from typing import Collection, Iterable, NamedTuple, Optional, Tuple
 
 import PIL  # type: ignore
 

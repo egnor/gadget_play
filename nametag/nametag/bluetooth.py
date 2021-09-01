@@ -3,8 +3,7 @@
 import contextlib
 import logging
 import time
-from collections.abc import Iterable
-from typing import List, NamedTuple, Optional, Set
+from typing import Iterable, List, NamedTuple, Optional, Set
 
 import bluepy.btle  # type: ignore
 
@@ -47,7 +46,7 @@ class Connection:
         prefix = f"({self.address})\n      "
         for send, expect in pairs:
             if send:
-                logger.debug(f"{prefix}Sending: {send.hex(' ')}")
+                logger.debug(f"{prefix}Sending: {send.hex()}")
                 self._listener.received.clear()
                 try:
                     self._char.write(send)
@@ -55,7 +54,7 @@ class Connection:
                     raise BluetoothError(str(e))
             if expect:
                 start_time = time.monotonic()
-                expect_text = "[*]" if expect == b"*" else expect.hex(" ")
+                expect_text = "[*]" if expect == b"*" else expect.hex()
                 while expect not in self._listener.received:
                     elapsed = time.monotonic() - start_time
                     if elapsed > timeout:
@@ -80,7 +79,7 @@ class _Listener(bluepy.btle.DefaultDelegate):
     def handleNotification(self, handle, data):
         addr = self._address
         if handle == self._handle:
-            logger.debug(f"({addr})\n      => Notify: {data.hex(' ')}")
+            logger.debug(f"({addr})\n      => Notify: {data.hex()}")
             self.received.add(data)
             self.received.add(b"*")  # Match wildcard expectations.
         else:

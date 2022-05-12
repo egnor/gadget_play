@@ -2,6 +2,7 @@
 
 .ardi
 build/
+work/
 
 *.pyc
 __pycache__/

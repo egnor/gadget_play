@@ -21,7 +21,7 @@ os.environ["ARDUINO_DIRECTORIES_USER"] = str(work_dir / "user")
 parser = argparse.ArgumentParser()
 parser.add_argument("--baud", default=115200)
 parser.add_argument("--fqbn", default="arduino:avr:uno")
-parser.add_argument("--port")
+parser.add_argument("--port", default="ttyUSB0")
 
 parser.add_argument("--build", action="store_true")
 parser.add_argument("--setup", action="store_true")
@@ -43,19 +43,19 @@ if args.setup:
     run([cli_bin, "core", "install", "arduino:avr"] + args.extra, check=True)
 
 if args.build or args.terminal or args.upload:
-    port = args.port
-    if not port:
-        print("Scanning ports...")
-        command = [cli_bin, "board", "list"]
-        output = run(command, stdout=PIPE, check=True).stdout.decode()
-        match = [l.strip() for l in output.split("\n") if args.fqbn in l]
-        if len(match) != 1:
-            print(f"*** No unique board:\n{output.strip()}\n")
-            sys.exit(1)
-        port = match[0].split()[0]
+    print(f'Scanning ports for "{args.port or args.fqbn}"...')
+    command = [cli_bin, "board", "list"]
+    output = run(command, stdout=PIPE, check=True).stdout.decode()
+    match = [
+        l.strip() for l in output.split("\n")
+        if (args.port or args.fqbn) in l
+    ]
+    if len(match) != 1:
+        print(f"*** No matching board:\n{output.strip()}\n")
+        sys.exit(1)
+    port = match[0].split()[0]
 
 if args.build or args.upload:
-    print(f"Building{' and uploading' if args.upload else ''} (port={port})...")
     command = [
         cli_bin,
         "compile",
@@ -67,7 +67,10 @@ if args.build or args.upload:
         f"--warnings=all",
     ]
     if args.upload:
+        print(f"Building and uploading ({port})...")
         command.append("--upload")
+    else:
+        print("Building...")
     run(command + (args.extra or [default_sketch_dir]), check=True)
 
 if args.terminal:

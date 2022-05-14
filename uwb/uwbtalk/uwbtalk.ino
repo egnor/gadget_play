@@ -27,25 +27,21 @@ void setup() {
   digitalWrite(DW3K_GPIO6_SPIPHA_PIN, 0);
   pinMode(DW3K_GPIO7_PIN, INPUT);
 
-  delay(500);
+  delay(100);
   pinMode(DW3K_IRQ_PIN, INPUT);
-  digitalWrite(DW3K_RSTn_PIN, 1);
-  while (!digitalRead(DW3K_IRQ_PIN)) {
-    Serial.println("Waiting for DW3K (IRQ=0)");
+  pinMode(DW3K_RSTn_PIN, INPUT);
+  while (!digitalRead(DW3K_RSTn_PIN)) {
+    Serial.println("Waiting for DW3K /RST");
     delay(100);
   }
-  Serial.println("DW3K ready (IRQ=1)!");
-
-  digitalWrite(DW3K_CSn_PIN, 0);
-  SPI.beginTransaction(DW3K_SPI_SETTINGS);
-  SPI.transfer(dw3k_short_read_header(DW3KRegisterFile::GEN_CFG_AES0));
-  uint16_t const dev_id_lo = SPI.transfer16(0);
-  uint16_t const dev_id_hi = SPI.transfer16(0);
-  SPI.endTransaction();
-  digitalWrite(DW3K_CSn_PIN, 1);
+  while (!digitalRead(DW3K_IRQ_PIN)) {
+    Serial.println("Waiting for DW3K IRQ");
+    delay(100);
+  }
+  Serial.println("DW3K ready (/RST, IRQ)!");
 
   Serial.print("DW3K DEV_ID: ");
-  Serial.print((uint32_t(dev_id_hi) << 16) | dev_id_lo, HEX);
+  Serial.print(dw3k_read32(DW3KRegisterFile::GEN_CFG_AES0, 0x0), HEX);
   Serial.println();
 }
 

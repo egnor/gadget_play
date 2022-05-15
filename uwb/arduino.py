@@ -9,7 +9,7 @@ from pathlib import Path
 from subprocess import run, PIPE
 
 source_dir = Path(__file__).resolve().parent
-default_sketch_dir = source_dir / "uwbtalk"
+default_sketch_dir = source_dir / "uwbtest"
 tool_dir = source_dir.parent / "external" / "arduino"
 cli_bin = tool_dir / f"arduino-cli-{platform.system()}-{platform.machine()}"
 
@@ -21,7 +21,7 @@ os.environ["ARDUINO_DIRECTORIES_USER"] = str(work_dir / "user")
 parser = argparse.ArgumentParser()
 parser.add_argument("--baud", default=115200)
 parser.add_argument("--fqbn", default="arduino:avr:uno")
-parser.add_argument("--port", default="ttyUSB0")
+parser.add_argument("--port", default="/dev/ttyUSB0")
 
 parser.add_argument("--build", action="store_true")
 parser.add_argument("--setup", action="store_true")
@@ -42,19 +42,6 @@ if args.setup:
     run([cli_bin, "upgrade"], check=True)
     run([cli_bin, "core", "install", "arduino:avr"] + args.extra, check=True)
 
-if args.build or args.terminal or args.upload:
-    print(f'Scanning ports for "{args.port or args.fqbn}"...')
-    command = [cli_bin, "board", "list"]
-    output = run(command, stdout=PIPE, check=True).stdout.decode()
-    match = [
-        l.strip() for l in output.split("\n")
-        if (args.port or args.fqbn) in l
-    ]
-    if len(match) != 1:
-        print(f"*** No matching board:\n{output.strip()}\n")
-        sys.exit(1)
-    port = match[0].split()[0]
-
 if args.build or args.upload:
     command = [
         cli_bin,
@@ -63,11 +50,11 @@ if args.build or args.upload:
         f"--build-path={work_dir / 'build'}",
         f"--fqbn={args.fqbn}",
         f"--output-dir={work_dir / 'build_output'}",
-        f"--port={port}",
+        f"--port={args.port}",
         f"--warnings=all",
     ]
     if args.upload:
-        print(f"Building and uploading ({port})...")
+        print(f"Building and uploading ({args.port})...")
         command.append("--upload")
     else:
         print("Building...")
@@ -75,6 +62,9 @@ if args.build or args.upload:
 
 if args.terminal:
     sys.argv = ['']
-    serial.tools.miniterm.main(default_port=port, default_baudrate=args.baud)
+    serial.tools.miniterm.main(
+        default_port=args.port,
+        default_baudrate=args.baud
+    )
 
 print("=== Done! ===\n")

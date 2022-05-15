@@ -28,9 +28,12 @@ void setup() {
   }
   Serial.println("DW3K ready (/RST, IRQ)!");
 
-  Serial.print("DW3K DEV_ID: ");
-  Serial.print(dw3k_read32(DW3KRegisterFile::GEN_CFG_AES0, 0x0), HEX);
-  Serial.println();
+  Serial.print("DEV_ID:  ");
+  Serial.println(dw3k_read32(DW3K_DEV_ID), HEX);
+  Serial.print("SYS_CFG: ");
+  Serial.println(dw3k_read32(DW3K_SYS_CFG), HEX);
+  Serial.print("FF_CFG:  ");
+  Serial.println(dw3k_read32(DW3K_FF_CFG), HEX);
 }
 
 void loop() {

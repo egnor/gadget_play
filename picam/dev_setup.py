@@ -12,7 +12,7 @@ print(f"=== System packages (sudo apt install ...) ===")
 check_call([
     "sudo", "apt", "install",
     "ffmpeg", "libatlas-base-dev", "libcap-dev", "libcamera-dev",
-    "python3-prctl", "python3-pyqt5",
+    "python3-dev", "python3-pyqt5",
 ])
 
 print()

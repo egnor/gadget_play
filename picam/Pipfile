@@ -1,0 +1,13 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+picamera2 = "*"
+
+[dev-packages]
+pip = ">=22.1"
+
+[requires]
+python_version = "3.9"

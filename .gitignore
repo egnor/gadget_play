@@ -2,6 +2,7 @@
 
 .ardi
 build/
+python_venv/
 work/
 
 *.pyc

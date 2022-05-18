@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 
+#include <cmath>
 #include <memory>
 
 #include <CLI/App.hpp>
@@ -72,7 +73,11 @@ int main(int argc, char** argv) {
     int buffers_arg = 4;
     int list_frames_arg = 5;
     int save_frames_arg = 0;
-    double fps_arg = 0.0;
+    float fps_arg = 0.0;
+    float man_gain_arg = 0.0;
+    float man_shutter_arg = 0.0;
+    float man_red_arg = 0.0;
+    float man_blue_arg = 0.0;
 
     CLI::App app("Exercise libcamera");
     app.add_option("--camera", camera_arg, "Camera name to use");
@@ -82,6 +87,10 @@ int main(int argc, char** argv) {
     app.add_option("--list_frames", list_frames_arg, "List (and skip) frames");
     app.add_option("--save_frames", save_frames_arg, "Save as frameXXXX.png");
     app.add_option("--fps", fps_arg, "Frame rate to specify");
+    app.add_option("--manual_gain", man_gain_arg, "Manual analog gain");
+    app.add_option("--manual_shutter", man_shutter_arg, "Manual analog gain");
+    app.add_option("--manual_red", man_red_arg, "Manual red gain");
+    app.add_option("--manual_blue", man_blue_arg, "Manual blue gain");
     CLI11_PARSE(app, argc, argv);
 
     libcamera::CameraManager manager;
@@ -181,6 +190,21 @@ int main(int argc, char** argv) {
     if (fps_arg > 0.0) {
         int64_t ft = 1000000 / fps_arg;
         camera_controls.set(libcamera::controls::FrameDurationLimits, {ft, ft});
+    }
+    if (man_gain_arg > 0.0 && man_shutter_arg > 0.0)
+        camera_controls.set(libcamera::controls::AeEnable, false);
+    if (man_gain_arg > 0.0) {
+        camera_controls.set(libcamera::controls::AnalogueGain, man_gain_arg);
+        camera_controls.set(libcamera::controls::DigitalGain, 1.0);
+    }
+    if (man_shutter_arg > 0.0) {
+        int const micros = std::round(man_shutter_arg * 1e6f);
+        camera_controls.set(libcamera::controls::ExposureTime, micros);
+    }
+    if (man_red_arg > 0.0 || man_blue_arg > 0.0) {
+        float const red = man_red_arg, blue = man_blue_arg;
+        camera_controls.set(libcamera::controls::AwbEnable, false);
+        camera_controls.set(libcamera::controls::ColourGains, {red, blue});
     }
 
     for (auto const& [name, value] : controls_text(camera_controls))

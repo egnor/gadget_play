@@ -34,29 +34,23 @@ print(f"=== Python packages (pip install ...) ===")
 venv_dir = build_dir / "python_venv"
 venv_bin = venv_dir / "bin"
 if not venv_dir.is_dir():
+    print(f"Creating {venv_dir}...")
     venv.create(venv_dir, symlinks=True, with_pip=True)
-    check_call(["direnv", "allow", source_dir])
 
-python_packages = ["conan", "meson", "ninja"]
-if not all(
-    any(venv_dir.glob(f"lib/python*/site-packages/{p}-*.dist-info"))
-    for p in python_packages
-):
-    check_call([venv_bin / "pip", "install"] + python_packages)
+check_call(["direnv", "allow", source_dir])
+with_direnv = lambda *args: check_call(["direnv", "exec", source_dir, *args])
+with_direnv("pip", "install", "conan", "meson", "ninja")
 
 print()
 print(f"=== C++ package manager (conan init) ===")
-os.environ["CONAN_V2_MODE"] = "1"
-os.environ["CONAN_USER_HOME"] = str(build_dir)
-
-conan = lambda *args: check_call([venv_bin / "conan", *args])
-conan("config", "init")
-conan("config", "set", "general.revisions_enabled=1")
+run_conan = lambda *args: with_direnv("conan", *args)
+run_conan("config", "init")
+run_conan("config", "set", "general.revisions_enabled=1")
 
 conan_profile = build_dir / "conan-profile.txt"
 if not conan_profile.is_file():
-    conan("profile", "new", "--detect", "--force", conan_profile)
-    conan(
+    run_conan("profile", "new", "--detect", "--force", conan_profile)
+    run_conan(
         "profile", "update", "settings.compiler.libcxx=libstdc++11",
         conan_profile
     )
@@ -64,10 +58,10 @@ if not conan_profile.is_file():
 print()
 print(f"=== C++ dependencies (conan install) ===")
 conan_install = build_dir / "conan-install"
-conan(
+run_conan(
     "install",
     f"--profile={conan_profile}",
-    # "--settings=build_type=Debug",  # Uncomment & re-run to build debug
+    "--settings=build_type=Debug",  # Uncomment & re-run to build debug
     f"--install-folder={conan_install}",
     "--build=outdated",
     source_dir
@@ -75,7 +69,7 @@ conan(
 
 print()
 print(f"=== Prepare build (meson/ninja via conan) ===")
-conan(
+run_conan(
     "build",
     f"--build-folder={build_dir}",
     f"--install-folder={conan_install}",
@@ -86,7 +80,7 @@ conan(
 # Save this to the end, to preserve conan cache for debugging if things fail
 print()
 print(f"=== Clean C++ package cache (conan remove) ===")
-conan("remove", "--src", "--builds", "--force", "*")
+run_conan("remove", "--src", "--builds", "--force", "*")
 
 print()
 print(f"::: Setup complete, build with: ninja -C build :::")

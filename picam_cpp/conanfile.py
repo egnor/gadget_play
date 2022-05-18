@@ -13,7 +13,9 @@ class PicamConan(conans.ConanFile):
     options = {"shared": [True, False]}
     default_options = {"shared": False}  # Used by Meson build helper
 
-    requires = ["cli11/2.1.1", "fmt/8.0.1"]
+    requires = [
+        "cli11/2.1.1", "concurrentqueue/1.0.3", "fmt/8.0.1", "libpng/1.6.37",
+    ]
 
     def build(self):
         meson = conans.Meson(self)  # Uses the "pkg_config" generator (above)

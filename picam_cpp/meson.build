@@ -9,8 +9,10 @@ project('picam', ['c', 'cpp'], version: '0.0',
 add_project_arguments('-Wno-pedantic', '-Wno-psabi', language: ['c', 'cpp'])
 
 deps = [
+    dependency('concurrentqueue'),
     dependency('fmt'),
     dependency('libcamera'),
+    dependency('libpng'),
 ]
 
 executable(

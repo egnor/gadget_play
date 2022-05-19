@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
     app.add_option("--save_frames", save_frames_arg, "Save as frameXXXX.png");
     app.add_option("--fps", fps_arg, "Frame rate to specify");
     app.add_option("--manual_gain", man_gain_arg, "Manual analog gain");
-    app.add_option("--manual_shutter", man_shutter_arg, "Manual analog gain");
+    app.add_option("--manual_shutter", man_shutter_arg, "Manual exposure time");
     app.add_option("--manual_red", man_red_arg, "Manual red gain");
     app.add_option("--manual_blue", man_blue_arg, "Manual blue gain");
     CLI11_PARSE(app, argc, argv);

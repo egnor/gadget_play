@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import signal
 import venv
 from pathlib import Path
 from subprocess import check_call, check_output
@@ -11,6 +12,7 @@ from subprocess import check_call, check_output
 # - Use pip in venv (pypi.org) for Python dependencies (like conan, meson, etc)
 # - Reluctantly use system packages (apt) for things not covered above
 
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 source_dir = Path(__file__).resolve().parent
 build_dir = source_dir / "build"
 

@@ -16,9 +16,11 @@
 
 struct HSI { uint16_t h; uint8_t s, i; };
 
+struct RGB { uint8_t r, g, b; };
+
 struct ColorOptions {
     int min_s = 128;
-    int min_i = 32;
+    int min_i = 8;
     int h_step = 10;
     int h_match = 20;
     int h_keepout = 20;
@@ -164,49 +166,85 @@ void print_data(
     fmt::print("\n");
 }
 
+RGB rgb_from_hsi(HSI const& hsi) {
+    auto const& [h_360, s_255, i_255] = hsi;
+
+    // https://en.wikipedia.org/wiki/HSL_and_HSV#HSI_to_RGB
+    auto const Z_60 = 60 - std::abs(h_360 % 120 - 60);
+    auto const C_255 = 3 * i_255 * s_255 * 60 / 255 / (60 + Z_60);
+    auto const X_255 = C_255 * Z_60 / 60;
+
+    std::array<int, 3> rgb1_255;
+    switch (h_360 / 60) {
+        case 0: rgb1_255 = {C_255, X_255, 0}; break;
+        case 1: rgb1_255 = {X_255, C_255, 0}; break;
+        case 2: rgb1_255 = {0, C_255, X_255}; break;
+        case 3: rgb1_255 = {0, X_255, C_255}; break;
+        case 4: rgb1_255 = {X_255, 0, C_255}; break;
+        default: rgb1_255 = {C_255, 0, X_255}; break;
+    }
+
+    auto const m_255 = i_255 * (255 - s_255) / 255;
+    return {
+        uint8_t(std::min(rgb1_255[0] + m_255, 255)),
+        uint8_t(std::min(rgb1_255[1] + m_255, 255)),
+        uint8_t(std::min(rgb1_255[1] + m_255, 255)),
+    };
+}
+
 void save_color_image(
+    int width, int height, int frame_stride, uint8_t const* frame_mem,
     std::vector<std::vector<HSI>> const& hsi_rows,
-    ColorOptions const& args,
+    std::vector<bool> const& active, ColorOptions const& args,
     std::string const& fn
 ) {
-    std::vector<uint8_t> rgb(hsi_rows.size() * hsi_rows[0].size() * 3, 0);
-    for (size_t y = 0; y < hsi_rows.size(); ++y) {
+    int const out_stride = width * 2 * 3;
+    std::vector<uint8_t> out(hsi_rows.size() * out_stride, 0);
+    for (int y = 0; y < height; ++y) {
         auto const& hsi_row = hsi_rows[y];
-        auto* rgb_row = rgb.data() + y * hsi_rows[0].size() * 3;
-        for (size_t x = 0; x < hsi_row.size(); ++x) {
-            auto [h_360, s_255, i_255] = hsi_row[x];
-            h_360 = h_360 / args.h_step * args.h_step;
-            if (i_255 < args.min_i) {
-                s_255 = i_255 = 0;
-            } else if (s_255 < args.min_s) {
-                s_255 = 0;
+        auto* const frame_row = out.data() + y * out_stride;
+        memcpy(frame_row, frame_mem + y * frame_stride, width * 3);
+
+        auto* const color_row = frame_row + width * 3;
+        for (int x = 0; x < width; ++x) {
+            auto [h, s, i] = hsi_row[x];
+            h = h / args.h_step * args.h_step;
+            if (i < args.min_i) {
+                s = i = 0;    // Too dim: turn black
+            } else if (s < args.min_s) {
+                s = 0;        // Too unsaturated: gray out (keep H, I)
+            } else {
+                s = i = 255;  // Usable: max S and I to emphasize H
             }
 
-            // https://en.wikipedia.org/wiki/HSL_and_HSV#HSI_to_RGB
-            auto const Z_60 = 60 - std::abs(h_360 % 120 - 60);
-            uint8_t const C_255 = 3 * i_255 * s_255 * 60 / 255 / (60 + Z_60);
-            uint8_t const X_255 = C_255 * Z_60 / 60;
-
-            std::array<uint8_t, 3> rgb1_255;
-            switch (h_360 / 60) {
-                case 0: rgb1_255 = {C_255, X_255, 0}; break;
-                case 1: rgb1_255 = {X_255, C_255, 0}; break;
-                case 2: rgb1_255 = {0, C_255, X_255}; break;
-                case 3: rgb1_255 = {0, X_255, C_255}; break;
-                case 4: rgb1_255 = {X_255, 0, C_255}; break;
-                default: rgb1_255 = {C_255, 0, X_255}; break;
-            }
-
-            auto const m_255 = i_255 * (255 - s_255) / 255;
-            for (int c = 0; c < 3; ++c)
-                rgb_row[x * 3 + c] = rgb1_255[c] + m_255;
+            auto const rgb = rgb_from_hsi({h, s, i});
+            color_row[x * 3 + 0] = rgb.r;
+            color_row[x * 3 + 1] = rgb.g;
+            color_row[x * 3 + 2] = rgb.b;
         }
     }
 
-    save_png(
-        hsi_rows[0].size(), hsi_rows.size(), hsi_rows[0].size() * 3,
-        rgb.data(), fn
-    );
+    int active_count = 0;
+    int const square_size = std::min(width / 8, height / 8);
+    for (size_t c = 0; c < active.size(); ++c) {
+        if (!active[c]) continue;
+        auto const rgb = rgb_from_hsi({uint16_t(c * args.h_step), 255, 255});
+        for (int y = 0; y < square_size; ++y) {
+            auto* const out_row = out.data() + y * out_stride +
+                (width + (square_size - 1) * active_count) * 3;
+            for (int x = 0; x < square_size; ++x) {
+                auto color = rgb;
+                if (x == 0 || x == square_size - 1) color = {255, 255, 255};
+                if (y == 0 || y == square_size - 1) color = {255, 255, 255};
+                out_row[x * 3 + 0] = color.r;
+                out_row[x * 3 + 1] = color.g;
+                out_row[x * 3 + 2] = color.b;
+            }
+        }
+        ++active_count;
+    }
+
+    save_png(width * 2, height, out_stride, out.data(), fn);
 }
 
 int main(int argc, char** argv) {
@@ -335,21 +373,18 @@ int main(int argc, char** argv) {
         auto const spectrum = spectrum_from_hsi(hsi_rows, color_args);
         auto const new_active = update_active(active, spectrum, color_args);
         if (new_active != active) {
+            active = std::move(new_active);
             fmt::print("{:.3f}s ", nanos * 1e-9);
-            for (auto f : new_active) fmt::print("{}", f ? "#" : ".");
+            for (auto f : active) fmt::print("{}", f ? "#" : ".");
             if (save_color_arg) {
-                save_png(
-                    sconfig->size.width, sconfig->size.height, sconfig->stride,
-                    mem, fmt::format("frame{:04d}.png", image_count)
-                );
+                auto const fn = fmt::format("color{:04d}.png", image_count++);
                 save_color_image(
-                    hsi_rows, color_args,
-                    fmt::format("color{:04d}.png", image_count)
+                    sconfig->size.width, sconfig->size.height, sconfig->stride,
+                    mem, hsi_rows, active, color_args, fn
                 );
-                fmt::print(" [frame/color]{:04d}.png", image_count++);
+                fmt::print(" {}", fn);
             }
             fmt::print("\n");
-            active = new_active;
         }
 
         if (print_data_arg && nanos >= next_data_nanos) {

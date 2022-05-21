@@ -6,5 +6,4 @@ python_venv/
 work/
 
 *.pyc
-*.png
 __pycache__/

@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sys/mman.h>
 
 #include <cmath>
@@ -10,7 +9,9 @@
 #include <fmt/core.h>
 #include <libcamera/libcamera.h>
 #include <moodycamel/blockingconcurrentqueue.h>
-#include <png.h>
+
+#include "checks.h"
+#include "save_png.h"
 
 static std::map<std::string, std::string> controls_text(
     libcamera::ControlList const& controls
@@ -23,57 +24,32 @@ static std::map<std::string, std::string> controls_text(
     return text;
 }
 
-static void save_png(
-    libcamera::StreamConfiguration const& sconfig,
-    std::shared_ptr<uint8_t const> const& mmap, int index
-) {
-    auto const filename = fmt::format("frame{:04d}.png", index);
-    fmt::print(">>> Saving: {}\n", filename);
-    if (sconfig.pixelFormat != libcamera::formats::BGR888) {
-        fmt::print("*** Bad format ({})\n", sconfig.pixelFormat.toString());
-        return;
-    }
-
-    FILE* fp = fopen(filename.c_str(), "wb");
-    if (!fp) {
-        fmt::print("*** File open failed\n");
-        return;
-    }
-
-    std::vector<png_byte const*> rows;
-    auto* png = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
-    auto* png_info = png_create_info_struct(png);
-    if (setjmp(png_jmpbuf(png))) {
-        fmt::print("*** PNG write failed\n");
-    } else {
-        png_set_IHDR(
-            png, png_info, sconfig.size.width, sconfig.size.height,
-            8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-            PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT
-        );
-        png_set_filter(png, 0, PNG_FILTER_AVG);
-        png_set_compression_level(png, 1);
-
-        for (size_t y = 0; y < sconfig.size.height; ++y)
-            rows.push_back(mmap.get() + y * sconfig.stride);
-
-        png_init_io(png, fp);
-        png_set_rows(png, png_info, const_cast<png_bytepp>(rows.data()));
-        png_write_png(png, png_info, PNG_TRANSFORM_IDENTITY, 0);
-    }
-
-    png_destroy_write_struct(&png, &png_info);
-    fclose(fp);
-}
-
 int main(int argc, char** argv) {
+    struct Context {
+        std::unique_ptr<libcamera::CameraManager> manager;
+        std::unique_ptr<libcamera::FrameBufferAllocator> allocator;
+        std::shared_ptr<libcamera::Camera> camera;
+        std::vector<std::unique_ptr<libcamera::Request>> requests;
+        moodycamel::BlockingConcurrentQueue<libcamera::Request*> done_q;
+
+        ~Context() {
+            if (camera) camera->stop();
+            if (camera) camera->release();
+            camera.reset();
+            allocator.reset();
+            if (manager) manager->stop();
+        }
+    } cx;
+
     std::string camera_arg;
     libcamera::Size size_arg = {640, 480};
     std::string format_arg = "BGR888";
-    int buffers_arg = 4;
-    int list_frames_arg = 5;
+    int buffers_arg = 2;
+    int list_frames_arg = 3;
     int save_frames_arg = 0;
     float fps_arg = 0.0;
+    libcamera::Rectangle crop_arg = {-1, -1, 0, 0};
+    int transform_arg = -1;
     float man_gain_arg = 0.0;
     float man_shutter_arg = 0.0;
     float man_red_arg = 0.0;
@@ -83,47 +59,47 @@ int main(int argc, char** argv) {
     app.add_option("--camera", camera_arg, "Camera name to use");
     app.add_option("--width", size_arg.width, "Capture X pixel size");
     app.add_option("--height", size_arg.height, "Capture Y pixel size");
+    app.add_option("--format", format_arg, "Capture pixel format");
     app.add_option("--buffers", buffers_arg, "Image buffers to allocate");
     app.add_option("--list_frames", list_frames_arg, "List (and skip) frames");
-    app.add_option("--save_frames", save_frames_arg, "Save as frameXXXX.png");
+    app.add_option("--save_frames", save_frames_arg, "Save as frame####.png");
     app.add_option("--fps", fps_arg, "Frame rate to specify");
+    app.add_option("--crop_x", crop_arg.x, "Sensor region left");
+    app.add_option("--crop_y", crop_arg.y, "Sensor region top");
+    app.add_option("--crop_width", crop_arg.width, "Sensor region width");
+    app.add_option("--crop_height", crop_arg.height, "Sensor region height");
+    app.add_option("--transform", transform_arg, "Image flip/rot bits, 0-7");
     app.add_option("--manual_gain", man_gain_arg, "Manual analog gain");
     app.add_option("--manual_shutter", man_shutter_arg, "Manual exposure time");
     app.add_option("--manual_red", man_red_arg, "Manual red gain");
     app.add_option("--manual_blue", man_blue_arg, "Manual blue gain");
     CLI11_PARSE(app, argc, argv);
 
-    libcamera::CameraManager manager;
-    manager.start();
-    fmt::print("\n=== Cameras (libcamera {}) ===\n", manager.version());
-    if (manager.cameras().empty()) {
-        fmt::print("*** No cameras available\n");
-        return 1;
-    }
+    cx.manager = std::make_unique<libcamera::CameraManager>();
+    cx.manager->start();
+    fmt::print("\n=== Cameras (libcamera {}) ===\n", cx.manager->version());
+    CHECK_RUNTIME(!cx.manager->cameras().empty(), "No cameras available");
 
-    std::shared_ptr<libcamera::Camera> camera;
-    for (auto const& cam : manager.cameras()) {
-        if (!camera && cam->id().find(camera_arg) != std::string::npos)
-            camera = cam;
-        fmt::print("{} {}\n", (camera == cam) ? "=>" : "  ", cam->id());
+    for (auto const& cam : cx.manager->cameras()) {
+        if (!cx.camera && cam->id().find(camera_arg) != std::string::npos)
+            cx.camera = cam;
+        fmt::print("{} {}\n", (cx.camera == cam) ? "=>" : "  ", cam->id());
     }
-    if (!camera) {
-        fmt::print("*** No cameras matching \"{}\"\n", camera_arg);
-        return 1;
-    }
+    CHECK_RUNTIME(cx.camera, "No cameras match: {}", camera_arg);
 
-    fmt::print("\n=== Camera properties ({}) ===\n", camera->id());
-    for (auto const& [name, value] : controls_text(camera->properties()))
-        fmt::print("{} = {}\n", name, value);
+    fmt::print("\n=== Acquiring camera ({}) ===\n", cx.camera->id());
+    CHECK_RUNTIME(!cx.camera->acquire(), "Acquire failed: {}", cx.camera->id());
 
-    fmt::print("\n--- Formats ---\n");
+    fmt::print("\n--- Role recommendations and supported formats ---\n");
     for (auto const& [name, role] : {
         std::pair{"Viewfinder", libcamera::Viewfinder},
         std::pair{"StillCapture", libcamera::StillCapture},
         std::pair{"VideoRecording", libcamera::VideoRecording},
         std::pair{"Raw", libcamera::Raw},
     }) {
-        auto const config = camera->generateConfiguration({role});
+        auto const config = cx.camera->generateConfiguration({role});
+        if (!config || config->empty()) continue;
+
         auto const& sconfig = (*config)[0];
         fmt::print(
             "{:<15} {:<18} {:>4}kB/f {:>4}B/l {}buf\n", name,
@@ -140,51 +116,63 @@ int main(int argc, char** argv) {
         }
     }
 
-    fmt::print("\n--- Available controls ---\n");
+    auto config = cx.camera->generateConfiguration({libcamera::VideoRecording});
+    CHECK_RUNTIME(!config->empty(), "No stream for VideoRecording role");
+
+    if (transform_arg >= 0) {
+        CHECK_ARG(transform_arg < 8, "Transform ({}) not 0-7", transform_arg);
+        config->transform = (libcamera::Transform) transform_arg;
+    } else {
+        config->transform = libcamera::transformFromRotation(
+            cx.camera->properties().get(libcamera::properties::Rotation)
+        );
+    }
+
+    auto* sconfig = &(*config)[0];
+    sconfig->size = size_arg;
+    sconfig->pixelFormat = libcamera::PixelFormat::fromString(format_arg);
+    sconfig->bufferCount = buffers_arg;
+    fmt::print(
+        "\n=== Configuring camera ({} tf={} buf={}) ===\n",
+        sconfig->toString(), transformToString(config->transform),
+        sconfig->bufferCount
+    );
+    CHECK_ARG(sconfig->pixelFormat.isValid(), "Bad format: {}", format_arg);
+
+    CHECK_RUNTIME(
+        config->validate() != libcamera::CameraConfiguration::Invalid,
+        "Invalid configuration: {}", sconfig->toString()
+    );
+    fmt::print(
+        "Validated: {} tf={} buf={} {:>4}kB/f {:>4}B/l\n", sconfig->toString(),
+        transformToString(config->transform), sconfig->bufferCount,
+        sconfig->frameSize / 1024, sconfig->stride
+    );
+
+    if (save_frames_arg) {
+        CHECK_ARG(
+            sconfig->pixelFormat == libcamera::formats::BGR888,
+            "Bad pixel format ({}) for --save_frames, need BGR888",
+            sconfig->pixelFormat.toString()
+        );
+    }
+
+    fmt::print("\n");  // Blank line before configure()'s log messages
+    CHECK_RUNTIME(!cx.camera->configure(config.get()), "Configure failed");
+
+    auto* stream = sconfig->stream();
+    CHECK_RUNTIME(stream, "No stream after configuration");
+
+    fmt::print("\n--- Camera properties ---\n");
+    for (auto const& [name, value] : controls_text(cx.camera->properties()))
+        fmt::print("{} = {}\n", name, value);
+
+    fmt::print("\n--- Dynamic controls available ---\n");
     std::map<std::string, std::string> info_text;
-    for (auto const& [id, info] : camera->controls())
+    for (auto const& [id, info] : cx.camera->controls())
         info_text[id->name()] = info.toString();
     for (auto const& [name, info] : info_text)
         fmt::print("{}: {}\n", name, info);
-
-    libcamera::StreamConfiguration desired = {};
-    desired.size = size_arg;
-    desired.pixelFormat = libcamera::PixelFormat::fromString(format_arg);
-    desired.bufferCount = buffers_arg;
-    fmt::print(
-        "\n=== Acquiring and configuring camera ({}) ===\n",
-        desired.toString()
-    );
-    if (!desired.pixelFormat.isValid()) {
-        fmt::print("*** Pixel format \"{}\" invalid\n", format_arg);
-        return 1;
-    }
-
-    if (camera->acquire()) {
-        fmt::print("*** Acquisition failed\n");
-        return 1;
-    }
-
-    auto config = camera->generateConfiguration({});
-    config->addConfiguration(desired);
-    if (config->validate() == libcamera::CameraConfiguration::Invalid) {
-        fmt::print("*** Invalid configuration\n");
-        return 1;
-    }
-
-    auto const& sconfig = (*config)[0];
-    fmt::print(
-        "Validated: {:<18} {:>4}kB/f {:>4}B/l {}buf\n", sconfig.toString(),
-        sconfig.frameSize / 1024, sconfig.stride, sconfig.bufferCount
-    );
-
-    if (save_frames_arg && sconfig.pixelFormat != libcamera::formats::BGR888) {
-        fmt::print(
-            "*** Bad pixel format ({}) for --save_frames, need BGR888\n",
-            sconfig.pixelFormat.toString()
-        );
-        return 1;
-    }
 
     libcamera::ControlList camera_controls{libcamera::controls::controls};
     if (fps_arg > 0.0) {
@@ -207,41 +195,40 @@ int main(int argc, char** argv) {
         camera_controls.set(libcamera::controls::ColourGains, {red, blue});
     }
 
-    for (auto const& [name, value] : controls_text(camera_controls))
-        fmt::print("  {} = {}\n", name, value);
-
-    fmt::print("\n");  // Blank line before configure()'s log messages
-    if (camera->configure(config.get())) {
-        fmt::print("*** Configuration failed\n");
-        return 1;
+    if (
+        crop_arg.x >= 0 || crop_arg.y >= 0 ||
+        crop_arg.width > 0 || crop_arg.height > 0
+    ) {
+        auto const& ps = cx.camera->properties();
+        auto const& crop_max = ps.get(libcamera::properties::ScalerCropMaximum);
+        if (crop_arg.x < 0) crop_arg.x = crop_max.x;
+        if (crop_arg.y < 0) crop_arg.y = crop_max.y;
+        if (crop_arg.width <= 0) crop_arg.width = crop_max.width;
+        if (crop_arg.height <= 0) crop_arg.height = crop_max.height;
+        camera_controls.set(libcamera::controls::ScalerCrop, crop_arg);
     }
 
-    auto allocator = std::make_unique<libcamera::FrameBufferAllocator>(camera);
-    if (allocator->allocate(sconfig.stream()) < 0) {
-        fmt::print("*** Allocation failed\n");
-        return 1;
+    if (!camera_controls.empty()) {
+        fmt::print("\n--- Dynamic controls set ---\n");
+        for (auto const& [name, value] : controls_text(camera_controls))
+            fmt::print("{} = {}\n", name, value);
     }
 
-    auto const& buffers = allocator->buffers(sconfig.stream());
-    std::vector<std::unique_ptr<libcamera::Request>> requests;
+    cx.allocator = std::make_unique<libcamera::FrameBufferAllocator>(cx.camera);
+    CHECK_RUNTIME(cx.allocator->allocate(stream) > 0, "Buffer alloc failed");
+
+    auto const& buffers = cx.allocator->buffers(stream);
     std::vector<std::shared_ptr<uint8_t const>> mmaps;
     for (auto const& buffer : buffers) {
-        auto request = camera->createRequest(requests.size());
-        if (request->addBuffer(sconfig.stream(), buffer.get())) {
-            fmt::print("*** Buffer association failed\n");
-            return 1;
-        }
-
-        requests.push_back(std::move(request));
+        auto request = cx.camera->createRequest(cx.requests.size());
+        CHECK_RUNTIME(!request->addBuffer(stream, buffer.get()), "Add failed");
+        cx.requests.push_back(std::move(request));
 
         if (save_frames_arg && buffer->planes().size() > 0) {
             auto const& plane = buffer->planes()[0];
             int const size = plane.length, fd = plane.fd.get();
             void* vmem = ::mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
-            if (vmem == MAP_FAILED) {
-                fmt::print("*** Buffer mapping failed\n");
-                return 1;
-            }
+            CHECK_RUNTIME(vmem != MAP_FAILED, "Buffer mapping failed");
             mmaps.emplace_back(
                 (uint8_t const*) vmem,
                 [size](uint8_t const* m) { ::munmap((void*) m, size); }
@@ -250,36 +237,33 @@ int main(int argc, char** argv) {
     }
 
     fmt::print("\n=== Starting camera ===\n");
-    if (camera->start(&camera_controls)) {
-        fmt::print("*** Camera failed to start\n");
-        return 1;
-    }
+    CHECK_RUNTIME(!cx.camera->start(&camera_controls), "Camera start failed");
+    cx.camera->requestCompleted.connect(
+        &cx, [&cx](libcamera::Request* r) { cx.done_q.enqueue(r); }
+    );
 
-    moodycamel::BlockingConcurrentQueue<libcamera::Request*> done_q;
-    auto enq = [&done_q](libcamera::Request* r) { done_q.enqueue(r); };
-    camera->requestCompleted.connect(&done_q, enq);
-    for (auto const& request : requests)
-        camera->queueRequest(request.get());
+    for (auto const& request : cx.requests)
+        cx.camera->queueRequest(request.get());
 
     auto const total_frames = list_frames_arg + save_frames_arg;
     fmt::print("--- Receiving {} frames ---\n", total_frames);
     for (int f = 0; f < total_frames; ++f) {
         libcamera::Request* done;
-        done_q.wait_dequeue(done);
-        if (done->status() != libcamera::Request::RequestComplete) {
-            fmt::print("*** Camera request #{} incomplete\n", done->sequence());
-            break;
-        }
+        cx.done_q.wait_dequeue(done);
+        CHECK_RUNTIME(
+            done->status() == libcamera::Request::RequestComplete,
+            "Request #{} incomplete", done->sequence()
+        );
 
-        auto const* buf = done->findBuffer(sconfig.stream());
-        if (buf->metadata().status != libcamera::FrameMetadata::FrameSuccess) {
-            fmt::print("*** Frame #{} failed\n", buf->metadata().sequence);
-            break;
-        }
+        auto const* buf = done->findBuffer(stream);
+        CHECK_RUNTIME(
+            buf->metadata().status == libcamera::FrameMetadata::FrameSuccess,
+            "Frame #{} failed", buf->metadata().sequence
+        );
 
         if (done->sequence()) fmt::print("\n");
         fmt::print(
-            "Req #{:<4} Seq #{:<4} {:.3f}us", done->sequence(),
+            "Req #{:<4} Seq #{:<4} {:.3f}s", done->sequence(),
             buf->metadata().sequence, buf->metadata().timestamp * 1e-9
         );
 
@@ -294,18 +278,19 @@ int main(int argc, char** argv) {
         for (auto const& [name, value] : controls_text(done->metadata()))
             fmt::print("  {} = {}\n", name, value);
 
-        if (f >= list_frames_arg)
-            save_png(sconfig, mmaps[done->cookie()], f - list_frames_arg);
+        if (f >= list_frames_arg) {
+            auto const fn = fmt::format("frame{:04d}.png", f - list_frames_arg);
+            fmt::print(">>> Saving: {}\n", fn);
+            save_png(
+                sconfig->size.width, sconfig->size.height, sconfig->stride,
+                mmaps[done->cookie()].get(), fn
+            );
+        }
 
         done->reuse(libcamera::Request::ReuseBuffers);
-        camera->queueRequest(done);
+        cx.camera->queueRequest(done);
     }
 
     fmt::print("\n=== Stopping and releasing camera ===\n");
-    camera->stop();
-    camera->release();
-    camera.reset();
-    allocator.reset();
-    manager.stop();
     return 0;
 }

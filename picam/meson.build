@@ -15,7 +15,19 @@ deps = [
     dependency('libpng'),
 ]
 
+picam_lib = library(
+    'picam', ['save_png.cpp'],
+    dependencies: [deps],
+)
+
 executable(
     'picam_test', 'picam_test.cpp',
+    link_with: [picam_lib],
+    dependencies: [deps],
+)
+
+executable(
+    'color_test', 'color_test.cpp',
+    link_with: [picam_lib],
     dependencies: [deps],
 )

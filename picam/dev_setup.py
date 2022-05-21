@@ -63,7 +63,7 @@ conan_install = build_dir / "conan-install"
 run_conan(
     "install",
     f"--profile={conan_profile}",
-    "--settings=build_type=Debug",  # Uncomment & re-run to build debug
+    # "--settings=build_type=Debug",  # Uncomment & re-run to build debug
     f"--install-folder={conan_install}",
     "--build=outdated",
     source_dir

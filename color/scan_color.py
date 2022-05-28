@@ -13,7 +13,6 @@ parser = argparse.ArgumentParser(description="Scan TCS34725 over I2C")
 parser.add_argument("--bus", type=int, default=1)
 parser.add_argument("--msec", type=float, default=2.4)
 parser.add_argument("--gain", type=int, default=1)
-parser.add_argument("--crgb", action="store_true")
 parser.add_argument("--hcv", action="store_true")
 args = parser.parse_args()
 
@@ -50,17 +49,17 @@ while True:  # Scan loop
     frac = [c / max_count for c in data]
     sat = any(f >= 1.0 for f in frac[1:]) or any(d >= 0xffff for d in data[1:])
 
-    if args.crgb:
+    if not args.hcv:
         for chan, v, c in zip("crgb", frac, ["FFF", "F00", "0F0", "00F"]):
-            out += chalk.bold.hex(c)(f" {chan}{v * 100:<2.0f}")
+            out += chalk.bold.hex(c)(f"{v * 100:3.0f}{chan}")
         out += " ["
         for p in range(1, 100, 2):
-            rgb = [0, 0, 0]
-            if p - 1 <= frac[0] * 100 < p + 1: rgb = (192, 192, 192)
+            rgb, ch = [0, 0, 0], "·"
+            if p - 1 <= frac[0] * 100 < p + 1: rgb, ch = [128, 128, 128], "◆"
             if p - 1 <= frac[1] * 100 < p + 1: rgb[0] = 255
             if p - 1 <= frac[2] * 100 < p + 1: rgb[1] = 255
             if p - 1 <= frac[3] * 100 < p + 1: rgb[2] = 255
-            out += "·" if rgb == [0, 0, 0] else chalk.bg_rgb(*rgb)(" ")
+            out += ch if rgb == [0, 0, 0] else chalk.bg_rgb(*rgb).black(ch)
         out += "]"
 
 
@@ -75,7 +74,7 @@ while True:  # Scan loop
         )
 
         blocks = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
-        out += f" H{H:<3.0f} C{C * 100:<2.0f} V{V * 100:<2.0f} ["
+        out += f" {H:<3.0f}°{C * 100:3.0f}C{V * 100:3.0f}V ["
         for h in range(5, 360, 10):
             hr, hg, hb = (
                 (255, h * 255 / 60, 0) if h < 60 else

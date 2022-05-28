@@ -74,7 +74,7 @@ while True:  # Scan loop
         )
 
         blocks = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
-        out += f" {H:<3.0f}°{C * 100:3.0f}C{V * 100:3.0f}V ["
+        out += f" {H:3.0f}°{C * 100:3.0f}C{V * 100:3.0f}V ["
         for h in range(5, 360, 10):
             hr, hg, hb = (
                 (255, h * 255 / 60, 0) if h < 60 else

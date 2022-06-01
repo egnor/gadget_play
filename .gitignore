@@ -1,8 +1,27 @@
+# Editor and general
 .*.swp
-
-.ardi
 build/
-python_venv/
 
+# Arduino
+.ardi
+
+# Python
 *.pyc
 __pycache__/
+python_venv/
+
+# KiCad
+*-backups
+*-cache
+*.bck
+*.drl
+*.gbl
+*.gbrjob
+*.gbo
+*.gbs
+*.gm1
+*.gtl
+*.gto
+*.gts
+*.kicad_prl
+*.zip

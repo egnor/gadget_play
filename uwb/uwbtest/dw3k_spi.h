@@ -2,6 +2,7 @@
 
 #include "dw3k_registers.h"
 
+void dw3k_init();
 void dw3k_command(DW3KFastCommand);
 void dw3k_read(DW3KRegisterAddress, void*, uint8_t len);
 void dw3k_write(DW3KRegisterAddress, void const*, uint8_t len);

@@ -3,7 +3,6 @@
 .ardi
 build/
 python_venv/
-work/
 
 *.pyc
 __pycache__/

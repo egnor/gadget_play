@@ -28,7 +28,7 @@ static void send_data(void const* data, uint8_t n) {
     spi->transfer(((uint8_t const*) data)[i]);
 }
 
-void dw3k_init() {
+void dw3k_init_spi() {
   if (!spi) {
     digitalWrite(DW3K_CSn_PIN, 1);
     pinMode(DW3K_CSn_PIN, OUTPUT);

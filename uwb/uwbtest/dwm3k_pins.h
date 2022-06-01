@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "pins_arduino.h"
 
 static constexpr int DW3K_RSTn_PIN = 7;
 static constexpr int DW3K_IRQ_PIN = 8;

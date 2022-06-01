@@ -39,8 +39,7 @@ static constexpr DW3KRegisterAddress
   DW3K_SYS_CFG       = {0x00, 0x10},
   DW3K_FF_CFG        = {0x00, 0x14},
   DW3K_SPI_RD_CRC    = {0x00, 0x18},
-  DW3K_SYS_TIME_LO   = {0x00, 0x1C},
-  DW3K_SYS_TIME_HI   = {0x00, 0x20},
+  DW3K_SYS_TIME      = {0x00, 0x1C},
   DW3K_TX_FCTRL_LO   = {0x00, 0x24},
   DW3K_TX_FCTRL_HI   = {0x00, 0x28},
   DW3K_DX_TIME       = {0x00, 0x2C},
@@ -82,6 +81,9 @@ static constexpr DW3KRegisterAddress
 
   DW3K_EC_CTRL       = {0x04, 0x00},
   DW3K_RX_CAL        = {0x04, 0x0C},
+  DW3K_RX_CAL_RESI   = {0x04, 0x14},
+  DW3K_RX_CAL_RESQ   = {0x04, 0x1C},
+  DW3K_RX_CAL_STS    = {0x04, 0x20},
 
   DW3K_GPIO_MODE     = {0x05, 0x00},
   DW3K_GPIO_PULL_EN  = {0x05, 0x04},

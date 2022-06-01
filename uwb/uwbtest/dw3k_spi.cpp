@@ -79,7 +79,7 @@ void dw3k_write(DW3KRegisterAddress addr, void const* data, uint8_t n) {
   end();
 }
 
-void dw3k_mask8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
+void dw3k_maskset8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
   begin();
   send_header(addr, true, 1);
   send_data(&mask, sizeof(mask));
@@ -87,7 +87,7 @@ void dw3k_mask8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
   end();
 }
 
-void dw3k_mask16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
+void dw3k_maskset16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
   begin();
   send_header(addr, true, 2);
   send_data(&mask, sizeof(mask));
@@ -95,7 +95,7 @@ void dw3k_mask16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
   end();
 }
 
-void dw3k_mask32(DW3KRegisterAddress addr, uint32_t mask, uint32_t set) {
+void dw3k_maskset32(DW3KRegisterAddress addr, uint32_t mask, uint32_t set) {
   begin();
   send_header(addr, true, 3);
   send_data(&mask, sizeof(mask));

@@ -38,20 +38,30 @@ void setup() {
   );
 
   Serial.printf("\nSending...\n");
-  auto const start32 = dw3k_clock32();
-  auto const sched32 = start32 + uint32_t(0.010 * dw3k_time32_hz);
-  auto const expect40 = dw3k_tx_expect40(sched32);
-  dw3k_schedule_tx("HELLO", 5, sched32);
-  wait_for_ready();
+  char msg[1000] = "HELLO";
 
-  auto const actual40 = dw3k_tx_actual40();
-  auto const after32 = dw3k_clock32();
-  char buf[40];
-  Serial.printf("start  %s\n", dtostrf(start32 / dw3k_time32_hz, 12, 9, buf));
-  Serial.printf("sched  %s\n", dtostrf(sched32 / dw3k_time32_hz, 12, 9, buf));
-  Serial.printf("expect %s\n", dtostrf(expect40 / dw3k_time40_hz, 15, 12, buf));
-  Serial.printf("actual %s\n", dtostrf(actual40 / dw3k_time40_hz, 15, 12, buf));
-  Serial.printf("after  %s\n", dtostrf(after32 / dw3k_time32_hz, 12, 9, buf));
+  auto const lead_t32 = dw3k_tx_leadtime_t32(sizeof(msg));
+  auto const extra_t32 = 100e-6 * dw3k_time32_hz;
+  auto const start_t32 = dw3k_clock_t32();
+  auto const sched_t32 = start_t32 + lead_t32 + extra_t32;
+  auto const expect_t40 = dw3k_tx_expect_t40(sched_t32);
+  auto const before_t32 = dw3k_clock_t32();
+  dw3k_schedule_tx(msg, sizeof(msg), sched_t32);
+  auto const added_t32 = dw3k_clock_t32();
+  wait_for_ready();
+  auto const done_t32 = dw3k_clock_t32();
+  auto const actual_t40 = dw3k_tx_actual_t40();
+
+  char t[40];
+  Serial.printf("start  %s\n", dtostrf(start_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("lead  +%s\n", dtostrf(lead_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("extra +%s\n", dtostrf(extra_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("before %s\n", dtostrf(before_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("added  %s\n", dtostrf(added_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("sched  %s\n", dtostrf(sched_t32 / dw3k_time32_hz, 12, 9, t));
+  Serial.printf("expect %s\n", dtostrf(expect_t40 / dw3k_time40_hz, 15, 12, t));
+  Serial.printf("actual %s\n", dtostrf(actual_t40 / dw3k_time40_hz, 15, 12, t));
+  Serial.printf("done   %s\n", dtostrf(done_t32 / dw3k_time32_hz, 12, 9, t));
 }
 
 void loop() {

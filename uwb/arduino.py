@@ -63,9 +63,10 @@ if args.build or args.upload:
         "compile",
         f"--build-cache-path={build_dir / 'build_cache'}",
         f"--build-path={build_dir / 'build'}",
+        f"--build-property=build.flags.optimize=-O3",
         f"--fqbn={args.fqbn}",
         f"--output-dir={build_dir / 'build_output'}",
-        f"--warnings=all",
+        "--warnings=all",
     ]
     if args.upload:
         print(f"Building and uploading ({port})...")

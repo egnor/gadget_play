@@ -13,19 +13,43 @@
 
 static SPIClass* spi = nullptr;
 
+uint8_t spi_buf[256];
+int spi_buf_filled = 0;
+
 static void begin() {
   digitalWrite(DW3K_CSn_PIN, 0);
   spi->beginTransaction(SPISettings(36000000, MSBFIRST, SPI_MODE0));
+  spi_buf_filled = 0;
+}
+
+static void flush() {
+  if (!spi_buf_filled) return;
+  spi->transfer(spi_buf, spi_buf_filled);
+  spi_buf_filled = 0;
 }
 
 static void end() {
+  flush();
   spi->endTransaction();
   digitalWrite(DW3K_CSn_PIN, 1);
 }
 
-static void send_data(void const* data, int n) {
-  for (int i = 0; i < n; ++i)
-    spi->transfer(((uint8_t const*) data)[i]);
+static void add_data(void const* data, int n) {
+  int const avail = sizeof(spi_buf) - spi_buf_filled;
+  if (avail >= n) {
+    memcpy(spi_buf + spi_buf_filled, data, n);
+    spi_buf_filled += n;
+  } else {
+    memcpy(spi_buf + spi_buf_filled, data, avail);
+    spi_buf_filled = sizeof(spi_buf);
+    flush();
+    add_data((uint8_t const*) data + avail, n - avail);
+  }
+}
+
+static void add_byte(uint8_t b) {
+  if (spi_buf_filled == sizeof(spi_buf)) flush();
+  spi_buf[spi_buf_filled++] = b;
 }
 
 void dw3k_init_spi() {
@@ -52,53 +76,54 @@ void dw3k_init_spi() {
 
 void dw3k_command(DW3KFastCommand command) {
   begin();
-  spi->transfer(0x81 | (command.bits << 1));
+  add_byte(0x81 | (command.bits << 1));
   end();
 }
 
-static void send_header(DW3KRegisterAddress addr, bool wr, uint8_t mbits) {
+static void add_header(DW3KRegisterAddress addr, bool wr, uint8_t mbits) {
   if (!mbits && !addr.offset) {
-    spi->transfer((wr ? 0x80 : 0) | (addr.file << 1));
+    add_byte((wr ? 0x80 : 0) | (addr.file << 1));
   } else {
-    spi->transfer((wr ? 0xC0 : 0x40) | (addr.file << 1) | (addr.offset >> 6));
-    spi->transfer((addr.offset << 2) | mbits);
+    add_byte((wr ? 0xC0 : 0x40) | (addr.file << 1) | (addr.offset >> 6));
+    add_byte((addr.offset << 2) | mbits);
   }
 }
 
 void dw3k_read(DW3KRegisterAddress addr, void* data, int n) {
   begin();
-  send_header(addr, false, 0);
+  add_header(addr, false, 0);
+  flush();
   spi->transfer(data, n);
   end();
 }
 
 void dw3k_write(DW3KRegisterAddress addr, void const* data, int n) {
   begin();
-  send_header(addr, true, 0);
-  send_data(data, n);
+  add_header(addr, true, 0);
+  add_data(data, n);
   end();
 }
 
 void dw3k_maskset8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
   begin();
-  send_header(addr, true, 1);
-  send_data(&mask, sizeof(mask));
-  send_data(&set, sizeof(set));
+  add_header(addr, true, 1);
+  add_data(&mask, sizeof(mask));
+  add_data(&set, sizeof(set));
   end();
 }
 
 void dw3k_maskset16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
   begin();
-  send_header(addr, true, 2);
-  send_data(&mask, sizeof(mask));
-  send_data(&set, sizeof(set));
+  add_header(addr, true, 2);
+  add_data(&mask, sizeof(mask));
+  add_data(&set, sizeof(set));
   end();
 }
 
 void dw3k_maskset32(DW3KRegisterAddress addr, uint32_t mask, uint32_t set) {
   begin();
-  send_header(addr, true, 3);
-  send_data(&mask, sizeof(mask));
-  send_data(&set, sizeof(set));
+  add_header(addr, true, 3);
+  add_data(&mask, sizeof(mask));
+  add_data(&set, sizeof(set));
   end();
 }

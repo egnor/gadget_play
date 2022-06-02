@@ -42,21 +42,32 @@ DW3KStatus dw3k_poll() {
     last_status = DW3KStatus::ResetWaitPLL;
   }
 
-  auto const sys_lo = dw3k_read<uint32_t>(DW3K_SYS_STATUS_LO);
-  auto const sys_hi = dw3k_read<uint32_t>(DW3K_SYS_STATUS_HI);
-  if ((sys_lo & 0xA0C0000) || (sys_hi & 0xF00)) {
+  auto const status_lo = dw3k_read<uint32_t>(DW3K_SYS_STATUS_LO);
+  auto const status_hi = dw3k_read<uint32_t>(DW3K_SYS_STATUS_HI);
+  if ((status_lo & 0xA0C0000) || (status_hi & 0xF00)) {
     last_status = DW3KStatus::ChipError;
     error_text = "Chip: Status error";
-    if ((sys_lo & 0x00040000)) error_text = "Chip: Impulse analyzer failure";
-    if ((sys_lo & 0x00080000)) error_text = "Chip: Low voltage";
-    if ((sys_lo & 0x02000000)) error_text = "Chip: Clock PLL losing lock";
-    if ((sys_lo & 0x08000000)) error_text = "Chip: Schedule overrun";
-    if ((sys_hi & 0x0100)) error_text = "Chip: Command error";
-    if ((sys_hi & 0x0E00)) error_text = "Chip: SPI error";
+    if ((status_lo & 0x00040000)) error_text = "Chip: Impulse analyzer failure";
+    if ((status_lo & 0x00080000)) error_text = "Chip: Low voltage";
+    if ((status_lo & 0x02000000)) error_text = "Chip: Clock PLL losing lock";
+    if ((status_lo & 0x08000000)) error_text = "Chip: Scheduled too late";
+    if ((status_hi & 0x0100)) error_text = "Chip: Command error";
+    if ((status_hi & 0x0E00)) error_text = "Chip: SPI error";
+  }
+
+  if (false) {
+    // TODO: This is having false positives. Figure out how to fix it?
+    // See the errata in the user manual for why this is needed...
+    auto const state = dw3k_read<uint32_t>(DW3K_SYS_STATE);
+    auto const pmsc = (state >> 16) & 0xFF;
+    if ((state & 0xF) == 0 && pmsc >= 0x08 && pmsc <= 0x0F && pmsc != 0x0A) {
+      last_status = DW3KStatus::ChipError;
+      error_text = "Chip: Scheduled too late*";
+    } 
   }
 
   if (last_status == DW3KStatus::ResetWaitPLL) {
-    if (!(sys_lo & 0x2)) return last_status;
+    if (!(status_lo & 0x2)) return last_status;
     dw3k_write<uint32_t>(DW3K_RX_CAL, 0x11);
     last_status = DW3KStatus::CalibrationWait;
   }
@@ -67,26 +78,26 @@ DW3KStatus dw3k_poll() {
     last_status = DW3KStatus::Ready;
   }
 
-  if (last_status == DW3KStatus::TransmitWait && (sys_lo & 0xF0)) {
+  if (last_status == DW3KStatus::TransmitWait && (status_lo & 0xF0)) {
     last_status = DW3KStatus::TransmitActive;
   }
 
   if (last_status == DW3KStatus::TransmitActive) {
-    if ((sys_lo & 0x80))
+    if ((status_lo & 0x80))
       last_status = DW3KStatus::Ready;
   }
 
   return last_status;
 }
 
-uint32_t dw3k_clock32() {
+uint32_t dw3k_clock_t32() {
   if (last_status < DW3KStatus::ResetWaitPLL)
-    return bug("BUG: Not ready for dw3k_clock32"), 0;
+    return bug("BUG: Not ready for dw3k_clock_t32"), 0;
   dw3k_write<uint8_t>(DW3K_SYS_TIME, 0);
   return dw3k_read<uint32_t>(DW3K_SYS_TIME);
 }
 
-void dw3k_schedule_tx(void const* data, int size, uint32_t sched_clock32) {
+void dw3k_schedule_tx(void const* data, int size, uint32_t sched_t32) {
   if (size < 0 || size >= 1023 - 2)
     return bug("BUG: Bad size for dw3k_start_transmit");
   if (last_status != DW3KStatus::Ready)
@@ -95,19 +106,49 @@ void dw3k_schedule_tx(void const* data, int size, uint32_t sched_clock32) {
   dw3k_write(DW3K_TX_BUFFER, data, size);
   dw3k_write<uint32_t>(DW3K_TX_FCTRL_LO, 0x1C00 | size);
   dw3k_write<uint16_t>(DW3K_CHAN_CTRL, 0x031E);
-  dw3k_write(DW3K_DX_TIME, sched_clock32);
+  dw3k_write(DW3K_DX_TIME, sched_t32);
   dw3k_command(DW3K_DTX);
   last_status = DW3KStatus::TransmitWait;
 }
 
-uint64_t dw3k_tx_expect40(uint32_t sched_clock32) {
+uint32_t dw3k_tx_leadtime_t32(int size) {
   if (last_status < DW3KStatus::ResetWaitPLL)
-    return bug("BUG: Not ready for dw3k_tx_expect40"), 0;
-  static auto tx_delay40 = dw3k_read<uint32_t>(DW3K_TX_ANTD);
-  return (uint64_t(sched_clock32 & ~1u) << 8) + tx_delay40;
+    return bug("BUG: Not ready for dw3k_schedule_tx"), 0;
+
+  int pre_sym;
+  switch ((dw3k_read<uint32_t>(DW3K_TX_FCTRL_LO) >> 12) & 0xF) {
+    case 0x1: pre_sym = 64; break;
+    case 0x2: pre_sym = 1024; break;
+    case 0x3: pre_sym = 4096; break;
+    case 0x4: pre_sym = 32; break;
+    case 0x5: pre_sym = 128; break;
+    case 0x6: pre_sym = 1536; break;
+    case 0x9: pre_sym = 256; break;
+    case 0xA: pre_sym = 2048; break;
+    case 0xD: pre_sym = 512; break;
+    default:
+      last_status = DW3KStatus::ChipError;
+      error_text = "Chip: Bad TXPSR value";
+      return 0;
+  }
+
+  auto const chan_ctrl = dw3k_read<uint16_t>(DW3K_CHAN_CTRL);
+  auto const sym_count = pre_sym + (((chan_ctrl & 0x6) == 0x4) ? 16 : 8);
+  auto const sym_t = ((chan_ctrl & 0xF8) <= 0x40) ? 993.59e-9 : 1017.63e-9;
+  auto const spi_byte_t = 8 / 11e6;  // Conservative SPI (12MHz - overhead)
+  auto const spi_bytes = (2 + size) + (2 + 4) + (2 + 2) + (2 + 4) + 1;
+  auto const t = spi_bytes * spi_byte_t + sym_count * sym_t + 20e-6;
+  return uint32_t(t * dw3k_time32_hz) + 1;
 }
 
-uint64_t dw3k_tx_actual40() {
+uint64_t dw3k_tx_expect_t40(uint32_t sched_t32) {
+  if (last_status < DW3KStatus::ResetWaitPLL)
+    return bug("BUG: Not ready for dw3k_tx_expect_t40"), 0;
+  static auto tx_delay40 = dw3k_read<uint32_t>(DW3K_TX_ANTD);
+  return (uint64_t(sched_t32 & ~1u) << 8) + tx_delay40;
+}
+
+uint64_t dw3k_tx_actual_t40() {
   if (last_status != DW3KStatus::Ready)
     return bug("BUG: Not ready for dw3k_tx_stamp"), 0;
   return dw3k_read<uint64_t>(DW3K_TX_STAMP_LO);
@@ -122,6 +163,8 @@ char const* debug(DW3KStatus status) {
     S(ResetWaitPLL);
     S(CalibrationWait);
     S(Ready);
+    S(ReceiveActive);
+    S(ReceiveAnalysis);
     S(TransmitWait);
     S(TransmitActive);
 #undef S

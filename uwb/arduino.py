@@ -5,11 +5,13 @@ import os
 import platform
 import serial.tools.list_ports
 import serial.tools.miniterm
+import signal
 import sys
 import time
 from pathlib import Path
 from subprocess import run, PIPE
 
+signal.signal(signal.SIGINT, signal.SIG_DFL)  # sane ^C behavior
 source_dir = Path(__file__).resolve().parent
 default_sketch_dir = source_dir / "uwbtest"
 tool_dir = source_dir.parent / "external" / "arduino"

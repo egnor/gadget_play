@@ -23,8 +23,8 @@ static void end() {
   digitalWrite(DW3K_CSn_PIN, 1);
 }
 
-static void send_data(void const* data, uint8_t n) {
-  for (uint8_t i = 0; i < n; ++i)
+static void send_data(void const* data, int n) {
+  for (int i = 0; i < n; ++i)
     spi->transfer(((uint8_t const*) data)[i]);
 }
 
@@ -65,14 +65,14 @@ static void send_header(DW3KRegisterAddress addr, bool wr, uint8_t mbits) {
   }
 }
 
-void dw3k_read(DW3KRegisterAddress addr, void* data, uint8_t n) {
+void dw3k_read(DW3KRegisterAddress addr, void* data, int n) {
   begin();
   send_header(addr, false, 0);
   spi->transfer(data, n);
   end();
 }
 
-void dw3k_write(DW3KRegisterAddress addr, void const* data, uint8_t n) {
+void dw3k_write(DW3KRegisterAddress addr, void const* data, int n) {
   begin();
   send_header(addr, true, 0);
   send_data(data, n);

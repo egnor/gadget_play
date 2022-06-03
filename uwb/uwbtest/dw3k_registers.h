@@ -4,7 +4,7 @@ struct DW3KFastCommand { uint8_t bits; };
 
 struct DW3KRegisterAddress {
   uint8_t file;
-  uint8_t offset;
+  uint16_t offset;
 };
 
 // DW3000 User Manual 9. "Fast Commands"
@@ -227,6 +227,9 @@ static constexpr DW3KRegisterAddress
   DW3K_AES_KEY6      = {0x17, 0x50},
   DW3K_AES_KEY7      = {0x17, 0x60},
   DW3K_AES_KEY8      = {0x17, 0x70},
+
+  DW3K_INDIRECT_PTR_A = {0x1D, 0},
+  DW3K_INDIRECT_PTR_B = {0x1E, 0},
 
   DW3K_FINT_STAT     = {0x1F, 0x00},
   DW3K_PTR_ADDR_A    = {0x1F, 0x04},

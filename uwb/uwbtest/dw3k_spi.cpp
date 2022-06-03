@@ -28,12 +28,6 @@ static void flush() {
   spi_buf_filled = 0;
 }
 
-static void end() {
-  flush();
-  spi->endTransaction();
-  digitalWrite(DW3K_CSn_PIN, 1);
-}
-
 static void add_data(void const* data, int n) {
   int const avail = sizeof(spi_buf) - spi_buf_filled;
   if (avail >= n) {
@@ -50,6 +44,12 @@ static void add_data(void const* data, int n) {
 static void add_byte(uint8_t b) {
   if (spi_buf_filled == sizeof(spi_buf)) flush();
   spi_buf[spi_buf_filled++] = b;
+}
+
+static void end() {
+  flush();
+  spi->endTransaction();
+  digitalWrite(DW3K_CSn_PIN, 1);
 }
 
 void dw3k_init_spi() {
@@ -89,7 +89,15 @@ static void add_header(DW3KRegisterAddress addr, bool wr, uint8_t mbits) {
   }
 }
 
+static void maybe_indirect(DW3KRegisterAddress* addr) {
+  if (addr->offset < 0x80) return;
+  dw3k_write(DW3K_PTR_ADDR_A, addr->file);
+  dw3k_write(DW3K_PTR_OFFSET_A, addr->offset);
+  *addr = DW3K_INDIRECT_PTR_A;
+}
+
 void dw3k_read(DW3KRegisterAddress addr, void* data, int n) {
+  maybe_indirect(&addr);
   begin();
   add_header(addr, false, 0);
   flush();
@@ -98,6 +106,7 @@ void dw3k_read(DW3KRegisterAddress addr, void* data, int n) {
 }
 
 void dw3k_write(DW3KRegisterAddress addr, void const* data, int n) {
+  maybe_indirect(&addr);
   begin();
   add_header(addr, true, 0);
   add_data(data, n);
@@ -105,6 +114,7 @@ void dw3k_write(DW3KRegisterAddress addr, void const* data, int n) {
 }
 
 void dw3k_maskset8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
+  maybe_indirect(&addr);
   begin();
   add_header(addr, true, 1);
   add_data(&mask, sizeof(mask));
@@ -113,6 +123,7 @@ void dw3k_maskset8(DW3KRegisterAddress addr, uint8_t mask, uint8_t set) {
 }
 
 void dw3k_maskset16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
+  maybe_indirect(&addr);
   begin();
   add_header(addr, true, 2);
   add_data(&mask, sizeof(mask));
@@ -121,6 +132,7 @@ void dw3k_maskset16(DW3KRegisterAddress addr, uint16_t mask, uint16_t set) {
 }
 
 void dw3k_maskset32(DW3KRegisterAddress addr, uint32_t mask, uint32_t set) {
+  maybe_indirect(&addr);
   begin();
   add_header(addr, true, 3);
   add_data(&mask, sizeof(mask));

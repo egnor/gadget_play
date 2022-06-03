@@ -44,26 +44,14 @@ DW3KStatus dw3k_poll() {
 
   auto const status_lo = dw3k_read<uint32_t>(DW3K_SYS_STATUS_LO);
   auto const status_hi = dw3k_read<uint32_t>(DW3K_SYS_STATUS_HI);
-  if ((status_lo & 0xA0C0000) || (status_hi & 0xF00)) {
+  if ((status_lo & 0x020C0000) || (status_hi & 0xF00)) {
     last_status = DW3KStatus::ChipError;
     error_text = "Chip: Status error";
     if ((status_lo & 0x00040000)) error_text = "Chip: Impulse analyzer failure";
     if ((status_lo & 0x00080000)) error_text = "Chip: Low voltage";
     if ((status_lo & 0x02000000)) error_text = "Chip: Clock PLL losing lock";
-    if ((status_lo & 0x08000000)) error_text = "Chip: Scheduled too late";
     if ((status_hi & 0x0100)) error_text = "Chip: Command error";
     if ((status_hi & 0x0E00)) error_text = "Chip: SPI error";
-  }
-
-  if (false) {
-    // TODO: This is having false positives. Figure out how to fix it?
-    // See the errata in the user manual for why this is needed...
-    auto const state = dw3k_read<uint32_t>(DW3K_SYS_STATE);
-    auto const pmsc = (state >> 16) & 0xFF;
-    if ((state & 0xF) == 0 && pmsc >= 0x08 && pmsc <= 0x0F && pmsc != 0x0A) {
-      last_status = DW3KStatus::ChipError;
-      error_text = "Chip: Scheduled too late*";
-    } 
   }
 
   if (last_status == DW3KStatus::ResetWaitPLL) {
@@ -78,16 +66,48 @@ DW3KStatus dw3k_poll() {
     last_status = DW3KStatus::Ready;
   }
 
-  if (last_status == DW3KStatus::TransmitWait && (status_lo & 0xF0)) {
-    last_status = DW3KStatus::TransmitActive;
+  if (last_status == DW3KStatus::TransmitWait) {
+    if ((status_lo & 0xF0)) {
+      last_status = DW3KStatus::TransmitActive;
+      dw3k_write<uint32_t>(DW3K_SYS_STATUS_LO, 0xF0);  // Clear bit
+    } else if ((status_lo & 0x8000000)) {
+      last_status = DW3KStatus::TransmitTooLate;
+      dw3k_write<uint32_t>(DW3K_SYS_STATUS_LO, 0x8000000);  // Clear bit
+    } else if (dw3k_read<uint32_t>(DW3K_SYS_STATE) == 0xD0000) {
+      // See DW3000 user Manual 9.4.1 "Delayed TX Notes", and:
+      // https://forum.qorvo.com/t/dw3000-hpdwarn-errata-need-clarification/12263
+      // https://github.com/foldedtoad/dwm3000/blob/ece11140cffa069187865f6c9b432db267a941f7/decadriver/deca_device_api.h#L246
+      last_status = DW3KStatus::TransmitTooLate;
+    }
   }
 
-  if (last_status == DW3KStatus::TransmitActive) {
-    if ((status_lo & 0x80))
-      last_status = DW3KStatus::Ready;
+  if ((last_status == DW3KStatus::TransmitActive) && (status_lo & 0x80)) {
+    last_status = DW3KStatus::Ready;
+    dw3k_write<uint32_t>(DW3K_SYS_STATUS_LO, 0x80);  // Clear bit
   }
 
   return last_status;
+}
+
+char const* dw3k_status_text() {
+  switch (last_status) {
+#define S(s) case DW3KStatus::s: return #s;
+    S(Invalid);
+    S(ResetActive);
+    S(ResetWaitIRQ);
+    S(ResetWaitPLL);
+    S(CalibrationWait);
+    S(Ready);
+    S(ReceiveActive);
+    S(ReceiveAnalysis);
+    S(TransmitWait);
+    S(TransmitActive);
+    S(TransmitTooLate);
+#undef S
+    case DW3KStatus::ChipError: return error_text;
+    case DW3KStatus::CodeBug: return error_text;
+  }
+  return "[BAD STATUS]";
 }
 
 uint32_t dw3k_clock_t32() {
@@ -154,22 +174,19 @@ uint64_t dw3k_tx_actual_t40() {
   return dw3k_read<uint64_t>(DW3K_TX_STAMP_LO);
 }
 
-char const* debug(DW3KStatus status) {
-  switch (status) {
-#define S(s) case DW3KStatus::s: return #s;
-    S(Invalid);
-    S(ResetActive);
-    S(ResetWaitIRQ);
-    S(ResetWaitPLL);
-    S(CalibrationWait);
-    S(Ready);
-    S(ReceiveActive);
-    S(ReceiveAnalysis);
-    S(TransmitWait);
-    S(TransmitActive);
-#undef S
-    case DW3KStatus::ChipError: return error_text;
-    case DW3KStatus::CodeBug: return error_text;
+void dw3k_cancel_txrx() {
+  switch (last_status) {
+    case DW3KStatus::TransmitWait:
+    case DW3KStatus::TransmitActive:
+    case DW3KStatus::TransmitTooLate:
+    case DW3KStatus::ReceiveActive:
+    case DW3KStatus::ReceiveAnalysis:
+    case DW3KStatus::Ready:
+      break;
+    default:
+      return bug("BUG: Not ready for dw3k_cancel_txrx");
   }
-  return "[BAD STATUS]";
+
+  dw3k_command(DW3K_TXRXOFF);
+  last_status = DW3KStatus::Ready;
 }

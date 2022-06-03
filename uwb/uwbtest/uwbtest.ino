@@ -9,7 +9,8 @@ static void wait_for_ready() {
   auto last = DW3KStatus::Invalid;
   for (int c = 0;; ++c) {
     auto const s = dw3k_poll();
-    if (s != last || !(c % 10000)) Serial.printf("DW3K: %s...\n", debug(s));
+    if (s != last || !(c % 10000))
+      Serial.printf("DW3K: %s...\n", dw3k_status_text());
     if (s == DW3KStatus::Ready) break;
     delayMicroseconds(10);
     last = s;

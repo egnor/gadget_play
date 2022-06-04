@@ -43,10 +43,22 @@ DW3KStatus dw3k_poll() {
   if (last_status == DS::ResetWaitIRQ) {
     if (!digitalRead(DW3K_IRQ_PIN)) return last_status;
     dw3k_init_spi();
-    dw3k_maskset32(DW3K_SEQ_CTRL, ~0u, 0x100);
-    dw3k_write(DW3K_SYS_CFG, 0x00041098);  // add 0x400 for RXAUTR
-    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = 0x1C00));
-    dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x031E));
+    dw3k_write(DW3K_SYS_CFG, 0x00040498);
+    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = 0x1800));
+    // dw3k_write(DW3K_TX_POWER, 0xFFFFFCFF);
+    dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094E));  // ch5
+    // dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094F));  // ch9
+    dw3k_write(DW3K_DGC_CFG, uint16_t(0xE4F5));
+    dw3k_write(DW3K_DTUNE0, uint16_t(0x100C));
+    dw3k_write(DW3K_DTUNE3, 0xAF5F35CC);
+    dw3k_write(DW3K_RF_TX_CTRL_1, uint8_t(0x0E));
+    dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C071134);  // ch5
+    // dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C010034);  // ch9
+    dw3k_write(DW3K_EVC_CTRL, 0x1);
+
+    // Initialize PLL
+    dw3k_write(DW3K_PLL_CAL, uint16_t(0x181));
+    dw3k_maskset32(DW3K_SEQ_CTRL, ~0u, 0x100);  // AINIT2IDLE, init PLL
     last_status = DS::ResetWaitPLL;
   }
 
@@ -60,10 +72,12 @@ DW3KStatus dw3k_poll() {
     if (sys_status & 0x02000000) error_text = "Chip: Clock PLL losing lock";
     if (sys_status & 0x10000000000) error_text = "Chip: Command error";
     if (sys_status & 0xE0000000000) error_text = "Chip: SPI error";
+    dw3k_write(DW3K_SYS_STATUS_LO, sys_status & 0xF00020C0000);  // Clear bits
   }
 
   if (last_status == DS::ResetWaitPLL) {
     if (!(sys_status & 0x2)) return last_status;
+    if (dw3k_read<uint16_t>(DW3K_PLL_CAL) & 0x100) return last_status;
     dw3k_write<uint8_t>(DW3K_RX_CAL, 0x11);
     last_status = DS::CalibrationWait;
   }
@@ -110,8 +124,8 @@ DW3KStatus dw3k_poll() {
     last_status = DS::ReceiveAnalyze;
   }
 
-  if (last_status == DS::ReceiveAnalyze && (sys_status & 0x400)) {
-    dw3k_write(DW3K_SYS_STATUS_LO, 0x400);  // Clear bit
+  if (last_status == DS::ReceiveAnalyze && (sys_status & 0x2000)) {
+    dw3k_write(DW3K_SYS_STATUS_LO, 0x2000);  // Clear bit
     last_status = DS::ReceiveDone;
   }
 
@@ -127,29 +141,6 @@ DW3KStatus dw3k_poll() {
   return last_status;
 }
 
-char const* dw3k_status_text() {
-  switch (last_status) {
-#define S(s) case DW3KStatus::s: return #s;
-    S(Invalid);
-    S(ResetActive);
-    S(ResetWaitIRQ);
-    S(ResetWaitPLL);
-    S(CalibrationWait);
-    S(Ready);
-    S(ReceiveListen);
-    S(ReceiveAnalyze);
-    S(ReceiveDone);
-    S(TransmitWait);
-    S(TransmitActive);
-    S(TransmitDone);
-    S(TransmitTooLate);
-#undef S
-    case DW3KStatus::ChipError: return error_text;
-    case DW3KStatus::CodeBug: return error_text;
-  }
-  return "[BAD STATUS]";
-}
-
 uint32_t dw3k_clock_t32() {
   if (last_status < DW3KStatus::ResetWaitPLL)
     return bug("BUG: Not ready for dw3k_clock_t32"), 0;
@@ -158,7 +149,7 @@ uint32_t dw3k_clock_t32() {
 }
 
 void dw3k_buffer_tx(void const* data, int size) {
-  if (size < 0 || tx_buffer_size + size >= dw3k_max_size)
+  if (size < 0 || tx_buffer_size + size >= dw3k_packet_size)
     return bug("BUG: Bad size for dw3k_start_transmit");
   if (last_status != DW3KStatus::Ready)
     return bug("BUG: Not ready for dw3k_tx_buffer");
@@ -166,9 +157,9 @@ void dw3k_buffer_tx(void const* data, int size) {
   dw3k_write({DW3K_TX_BUFFER.file, tx_buffer_size}, data, size);
   tx_buffer_size += size;
 
-  uint32_t const new_fctrl_lo = (cache_tx_fctrl_lo & ~0x300u) | tx_buffer_size;
-  if (new_fctrl_lo != cache_tx_fctrl_lo)
-    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = new_fctrl_lo));
+  uint32_t const fctrl = (cache_tx_fctrl_lo & ~0x300u) | (tx_buffer_size + 2);
+  if (fctrl != cache_tx_fctrl_lo)
+    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = fctrl));
 }
 
 void dw3k_schedule_tx(uint32_t sched_t32) {
@@ -231,7 +222,7 @@ void dw3k_retrieve_rx(int offset, int size, void* out) {
   if (last_status != DW3KStatus::ReceiveAnalyze &&
       last_status != DW3KStatus::ReceiveDone)
     return bug("BUF: Not ready for dw3k_retrieve_rx");
-  if (offset < 0 || size < 0 || offset + size > dw3k_max_size + 2)
+  if (offset < 0 || size < 0 || offset + size > dw3k_packet_size + 2)
     return bug("BUG: Bad offset/size for dw3k_retrieve_rx");
   dw3k_read({DW3K_RX_BUFFER_0.file, uint16_t(offset)}, out, size);
 }
@@ -246,8 +237,13 @@ int dw3k_rx_size() {
   if (last_status != DW3KStatus::ReceiveAnalyze &&
       last_status != DW3KStatus::ReceiveDone)
     return bug("BUF: Not ready for dw3k_rx_size"), 0;
-  auto const raw = dw3k_read<uint16_t>(DW3K_RX_FINFO) & 0x3F;
-  return (raw < 2) ? 0 : (raw > dw3k_max_size + 2) ? dw3k_max_size : raw - 2;
+  auto const size_with_crc = dw3k_read<uint16_t>(DW3K_RX_FINFO) & 0x3F;
+  if (size_with_crc < 2 || size_with_crc > dw3k_packet_size + 2) {
+    last_status = DW3KStatus::ChipError;
+    error_text = "Chip: Bad RX_FINFO packet size";
+    return 0;
+  }
+  return size_with_crc - 2;
 }
 
 void dw3k_end_txrx() {
@@ -269,4 +265,45 @@ void dw3k_end_txrx() {
 
   tx_buffer_size = 0;
   last_status = DW3KStatus::Ready;
+}
+
+char const* dw3k_status_text() {
+  switch (last_status) {
+#define S(s) case DW3KStatus::s: return #s;
+    S(Invalid);
+    S(ResetActive);
+    S(ResetWaitIRQ);
+    S(ResetWaitPLL);
+    S(CalibrationWait);
+    S(Ready);
+    S(ReceiveListen);
+    S(ReceiveAnalyze);
+    S(ReceiveDone);
+    S(TransmitWait);
+    S(TransmitActive);
+    S(TransmitDone);
+    S(TransmitTooLate);
+#undef S
+    case DW3KStatus::ChipError: return error_text;
+    case DW3KStatus::CodeBug: return error_text;
+  }
+  return "[BAD STATUS]";
+}
+
+char const* dw3k_counter(int c, int* out) {
+  struct CounterDef { char const* name; DW3KRegisterAddress const* addr; };
+  static CounterDef const defs[dw3k_num_counters] = {
+#define C(n) {#n, &DW3K_EVC_##n}
+    C(PHE), C(RSE), C(FCG), C(FCE), C(FFR), C(OVR), C(STO), C(PTO), C(FWTO),
+    C(TXFS), C(HPW), C(SWCE), C(CPQE), C(VWARN),
+#undef C
+  };
+
+  if (c < 0 || c >= dw3k_num_counters)
+    return bug("BUG: Bad index for dw3k_counter"), nullptr;
+  if (out) {
+    *out = (last_status < DW3KStatus::ResetWaitPLL) ? 0 :
+        dw3k_read<uint16_t>(*defs[c].addr);
+  }
+  return defs[c].name;
 }

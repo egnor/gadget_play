@@ -42,14 +42,15 @@ if not (args.build or args.setup or args.terminal or args.upload):
         sys.exit(1)
     run([cli_bin] + args.extra)
 
-port = Path("/dev", args.port)
-if not port.is_char_device():
-    matching = list(serial.tools.list_ports.grep(args.port))
-    if len(matching) != 1:
-        print(f'{len(matching)} ports match "{args.port}"')
-        print("See: python -m serial.tools.list_ports -v")
-        sys.exit(1)
-    port = Path(matching[0].device)
+if args.upload or args.terminal:
+  port = Path("/dev", args.port)
+  if not port.is_char_device():
+      matching = list(serial.tools.list_ports.grep(args.port))
+      if len(matching) != 1:
+          print(f'{len(matching)} ports match "{args.port}"')
+          print("See: python -m serial.tools.list_ports -v")
+          sys.exit(1)
+      port = Path(matching[0].device)
 
 if args.setup:
     board_prefix = ":".join(args.fqbn.split(":")[:2])

@@ -32,6 +32,12 @@ void dw3k_reset() {
 
 DW3KStatus dw3k_poll() {
   using DS = DW3KStatus;
+  if (last_status == DS::ChipError || last_status == DS::CodeBug)
+    return last_status;
+
+  //
+  // Reset handling
+  //
 
   if (last_status == DS::ResetActive) {
     if (millis() - reset_millis < 10) return last_status;
@@ -40,9 +46,38 @@ DW3KStatus dw3k_poll() {
     last_status = DS::ResetWaitIRQ;
   }
 
+  //
+  // Basic system initialization once SPI is available
+  //
+
   if (last_status == DS::ResetWaitIRQ) {
     if (!digitalRead(DW3K_IRQ_PIN)) return last_status;
     dw3k_init_spi();
+
+    // Verify DEV_ID (are we even talking to a DW3000)
+    auto const dev_id = dw3k_read<uint32_t>(DW3K_DEV_ID);
+    if (dev_id != 0xDECA0302 && dev_id != 0xDECA0312) {
+      last_status = DS::ChipError;
+      error_text = "Chip: Bad device ID";
+      return last_status;
+    }
+
+    // Set operating configuration from OTP values
+    auto const ldo_lo = dw3k_read_otp(DW3K_OTP_LDO_TUNE_LO);
+    auto const ldo_hi = dw3k_read_otp(DW3K_OTP_LDO_TUNE_HI);
+    uint8_t const bias_tune = (dw3k_read_otp(DW3K_OTP_BIAS_TUNE) >> 16) & 0x1F;
+    uint8_t const xtal_trim = dw3k_read_otp(DW3K_OTP_XTAL_TRIM);
+    if (!ldo_lo || !ldo_hi || !bias_tune || !xtal_trim) {
+      last_status = DS::ChipError;
+      error_text = "Chip: Missing value in OTP";
+      return last_status;
+    }
+
+    dw3k_maskset16(DW3K_OTP_CFG, ~0, 0x0180);  // BIAS_KICK, LDO_KICK
+    dw3k_maskset16(DW3K_BIAS_CTRL, ~0x1F, bias_tune);
+    dw3k_write(DW3K_XTAL, xtal_trim);
+
+    // Configure radio parameters
     dw3k_write(DW3K_SYS_CFG, 0x00040498);
     dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = 0x1800));
     // dw3k_write(DW3K_TX_POWER, 0xFFFFFCFF);
@@ -50,17 +85,22 @@ DW3KStatus dw3k_poll() {
     // dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094F));  // ch9
     dw3k_write(DW3K_DGC_CFG, uint16_t(0xE4F5));
     dw3k_write(DW3K_DTUNE0, uint16_t(0x100C));
-    dw3k_write(DW3K_DTUNE3, 0xAF5F35CC);
+    // dw3k_write(DW3K_DTUNE3, 0xAF5F35CC);  // from manual
+    dw3k_write(DW3K_DTUNE3, 0xAF5F584C);  // from deca_driver for !no-data
     dw3k_write(DW3K_RF_TX_CTRL_1, uint8_t(0x0E));
     dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C071134);  // ch5
     // dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C010034);  // ch9
     dw3k_write(DW3K_EVC_CTRL, 0x1);
 
-    // Initialize PLL
+    // Start PLL
     dw3k_write(DW3K_PLL_CAL, uint16_t(0x181));
     dw3k_maskset32(DW3K_SEQ_CTRL, ~0u, 0x100);  // AINIT2IDLE, init PLL
     last_status = DS::ResetWaitPLL;
   }
+
+  //
+  // Error flag detection
+  //
 
   uint64_t sys_status = 0;
   dw3k_read(DW3K_SYS_STATUS_LO, &sys_status, 6);
@@ -72,8 +112,12 @@ DW3KStatus dw3k_poll() {
     if (sys_status & 0x02000000) error_text = "Chip: Clock PLL losing lock";
     if (sys_status & 0x10000000000) error_text = "Chip: Command error";
     if (sys_status & 0xE0000000000) error_text = "Chip: SPI error";
-    dw3k_write(DW3K_SYS_STATUS_LO, sys_status & 0xF00020C0000);  // Clear bits
+    return last_status;
   }
+
+  //
+  // Once PLL is locked, start RX calibration
+  //
 
   if (last_status == DS::ResetWaitPLL) {
     if (!(sys_status & 0x2)) return last_status;
@@ -87,6 +131,10 @@ DW3KStatus dw3k_poll() {
     dw3k_write<uint8_t>(DW3K_RX_CAL, 0);
     last_status = DS::Ready;
   }
+
+  //
+  // Handle TX/RX completion
+  //
 
   auto const sys_state = dw3k_read<uint32_t>(DW3K_SYS_STATE);
   if (last_status == DS::TransmitWait) {

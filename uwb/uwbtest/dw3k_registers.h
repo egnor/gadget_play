@@ -7,6 +7,8 @@ struct DW3KRegisterAddress {
   uint16_t offset;
 };
 
+struct DW3KOTPAddress { uint16_t index; };
+
 // DW3000 User Manual 9. "Fast Commands"
 static constexpr DW3KFastCommand
   DW3K_TXRXOFF     = {0x00},
@@ -220,7 +222,7 @@ static constexpr DW3KRegisterAddress
   DW3K_TXFSEQ        = {0x11, 0x12},  // double check??
   DW3K_LED_CTRL      = {0x11, 0x16},
   DW3K_RX_SNIFF      = {0x11, 0x1A},
-  DW3K_BIAS_CTRL     = {0x11, 0x1F},
+  DW3K_BIAS_CTRL     = {0x11, 0x1F},  // From deca_driver
 
   DW3K_RX_BUFFER0    = {0x12, 0x00},
 
@@ -249,3 +251,30 @@ static constexpr DW3KRegisterAddress
   DW3K_PTR_OFFSET_A  = {0x1F, 0x08},
   DW3K_PTR_ADDR_B    = {0x1F, 0x0C},
   DW3K_PTR_OFFSET_B  = {0x1F, 0x10};
+
+static constexpr DW3KOTPAddress
+  DW3K_OTP_EUID_LO             = {0x00},
+  DW3K_OTP_EUID_HI             = {0x01},
+  DW3K_OTP_EUID_ALT_LO         = {0x02},
+  DW3K_OTP_EUID_ALT_HI         = {0x03},
+  DW3K_OTP_LDO_TUNE_LO         = {0x04},
+  DW3K_OTP_LDO_TUNE_HI         = {0x05},
+  DW3K_OTP_CHIP_ID             = {0x06},
+  DW3K_OTP_LOT_ID              = {0x07},
+  DW3K_OTP_VBAT                = {0x08},
+  DW3K_OTP_TEMP                = {0x09},
+  DW3K_OTP_BIAS_TUNE           = {0x0A},
+  DW3K_OTP_RFLOOP_DELAY        = {0x0B},
+  DW3K_OTP_AOA_ISO             = {0x0C},
+  DW3K_OTP_WS_LOT_LO           = {0x0D},
+  DW3K_OTP_WS_LOT_HI           = {0x0E},
+  DW3K_OTP_WS_WAFER            = {0x0F},
+  DW3K_OTP_XTAL_TRIM           = {0x1E},
+  DW3K_OTP_REVISION            = {0x1F},
+  DW3K_OTP_RX_DGC_CFG_BASE     = {0x20},
+  DW3K_OTP_RX_DGC_LUT_CH5_BASE = {0x27},
+  DW3K_OTP_RX_DGC_LUT_CH9_BASE = {0x2E},
+  DW3K_OTP_QSR                 = {0x60},
+  DW3K_OTP_Q_RR                = {0x61},
+  DW3K_OTP_PLL_LOCK_CODE       = {0x35},
+  DW3K_OTP_AES_KEY_BASE        = {0x78};

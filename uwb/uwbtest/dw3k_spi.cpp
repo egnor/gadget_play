@@ -9,6 +9,7 @@
 #include <SPI.h>
 #include "wiring_private.h"  // for pinPeripheral()
 
+#include "dw3k_registers.h"
 #include "dwm3k_pins.h"
 
 static SPIClass* spi = nullptr;
@@ -138,4 +139,11 @@ void dw3k_maskset32(DW3KRegisterAddress addr, uint32_t mask, uint32_t set) {
   add_data(&mask, sizeof(mask));
   add_data(&set, sizeof(set));
   end();
+}
+
+uint32_t dw3k_read_otp(DW3KOTPAddress addr) {
+  dw3k_write(DW3K_OTP_CFG, uint16_t(0x0001));
+  dw3k_write(DW3K_OTP_ADDR, addr.index);
+  dw3k_write(DW3K_OTP_CFG, uint16_t(0x0002));
+  return dw3k_read<uint32_t>(DW3K_OTP_RDATA);
 }

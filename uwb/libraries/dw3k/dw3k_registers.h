@@ -89,7 +89,6 @@ static constexpr DW3KRegisterAddress
   DW3K_DGC_LUT5      = {0x03, 0x4C},  // from deca_driver
   DW3K_DGC_LUT6      = {0x03, 0x50},  // from deca_driver
   DW3K_DGC_DBG       = {0x03, 0x60},
-  DW3K_DGC_
 
   DW3K_EC_CTRL       = {0x04, 0x00},
   DW3K_RX_CAL        = {0x04, 0x0C},

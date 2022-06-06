@@ -1,4 +1,4 @@
-#include "dw3k_driver.h"
+#include "dw3k.h"
 
 #include <Arduino.h>
 
@@ -79,7 +79,7 @@ DW3KStatus dw3k_poll() {
 
     // Configure radio parameters
     dw3k_write(DW3K_SYS_CFG, 0x00040498);
-    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = 0x1800));
+    dw3k_write(DW3K_TX_FCTRL_64, (cache_tx_fctrl_lo = 0x1800));
     // dw3k_write(DW3K_TX_POWER, 0xFFFFFCFF);
     dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094E));  // ch5
     // dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094F));  // ch9
@@ -87,8 +87,8 @@ DW3KStatus dw3k_poll() {
     dw3k_write(DW3K_DTUNE0, uint16_t(0x100C));
     // dw3k_write(DW3K_DTUNE3, 0xAF5F35CC);  // from manual
     dw3k_write(DW3K_DTUNE3, 0xAF5F584C);  // from deca_driver for !no-data
-    dw3k_write(DW3K_RF_TX_CTRL_1, uint8_t(0x0E));
-    dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C071134);  // ch5
+    dw3k_write(DW3K_RF_TX_CTRL1, uint8_t(0x0E));
+    dw3k_write(DW3K_RF_TX_CTRL2, 0x1C071134);  // ch5
     // dw3k_write(DW3K_RF_TX_CTRL_2, 0x1C010034);  // ch9
     dw3k_write(DW3K_EVC_CTRL, 0x1);
 
@@ -103,7 +103,7 @@ DW3KStatus dw3k_poll() {
   //
 
   uint64_t sys_status = 0;
-  dw3k_read(DW3K_SYS_STATUS_LO, &sys_status, 6);
+  dw3k_read(DW3K_SYS_STATUS_64, &sys_status, 6);
   if (sys_status & 0xF00020C0000) {
     last_status = DS::ChipError;
     error_text = "Chip: Status error";
@@ -140,10 +140,10 @@ DW3KStatus dw3k_poll() {
   if (last_status == DS::TransmitWait) {
     if (sys_status & 0xF0) {
       last_status = DS::TransmitActive;
-      dw3k_write(DW3K_SYS_STATUS_LO, 0xF0);  // Clear bit
+      dw3k_write(DW3K_SYS_STATUS_64, 0xF0);  // Clear bit
     } else if (sys_status & 0x8000000) {
       last_status = DS::TransmitTooLate;
-      dw3k_write(DW3K_SYS_STATUS_LO, 0x8000000);  // Clear bit
+      dw3k_write(DW3K_SYS_STATUS_64, 0x8000000);  // Clear bit
     } else if (sys_state == 0xD0000) {
       // See DW3000 user Manual 9.4.1 "Delayed TX Notes", and:
       // https://forum.qorvo.com/t/dw3000-hpdwarn-errata-need-clarification/12263
@@ -153,7 +153,7 @@ DW3KStatus dw3k_poll() {
   }
 
   if (last_status == DS::TransmitActive && (sys_status & 0x80)) {
-    dw3k_write(DW3K_SYS_STATUS_LO, 0x80);  // Clear bit
+    dw3k_write(DW3K_SYS_STATUS_64, 0x80);  // Clear bit
     last_status = DS::TransmitDone;
   }
 
@@ -161,26 +161,26 @@ DW3KStatus dw3k_poll() {
   if (
       (last_status == DS::TransmitWait || last_status == DS::TransmitActive) &&
       (pmsc_state < 0x8 || pmsc_state > 0xF) &&
-      !(dw3k_read<uint32_t>(DW3K_SYS_STATUS_LO) & 0xF0)
+      !(dw3k_read<uint32_t>(DW3K_SYS_STATUS_64) & 0xF0)
   ) {
     last_status = DS::ChipError;
     error_text = "Chip: PMSC not in TX state";
   }
 
   if (last_status == DS::ReceiveListen && (sys_status & 0x4000)) {
-    dw3k_write(DW3K_SYS_STATUS_LO, 0x4000);  // Clear bit
+    dw3k_write(DW3K_SYS_STATUS_64, 0x4000);  // Clear bit
     last_status = DS::ReceiveAnalyze;
   }
 
   if (last_status == DS::ReceiveAnalyze && (sys_status & 0x2000)) {
-    dw3k_write(DW3K_SYS_STATUS_LO, 0x2000);  // Clear bit
+    dw3k_write(DW3K_SYS_STATUS_64, 0x2000);  // Clear bit
     last_status = DS::ReceiveDone;
   }
 
   if (
       (last_status == DS::ReceiveListen || last_status == DS::ReceiveAnalyze) &&
       (pmsc_state < 0x12 || pmsc_state > 0x19) &&
-      !(dw3k_read<uint32_t>(DW3K_SYS_STATUS_LO) & 0x4400)
+      !(dw3k_read<uint32_t>(DW3K_SYS_STATUS_64) & 0x4400)
   ) {
     last_status = DS::ChipError;
     error_text = "Chip: PMSC not in RX state";
@@ -207,7 +207,7 @@ void dw3k_buffer_tx(void const* data, int size) {
 
   uint32_t const fctrl = (cache_tx_fctrl_lo & ~0x300u) | (tx_buffer_size + 2);
   if (fctrl != cache_tx_fctrl_lo)
-    dw3k_write(DW3K_TX_FCTRL_LO, (cache_tx_fctrl_lo = fctrl));
+    dw3k_write(DW3K_TX_FCTRL_64, (cache_tx_fctrl_lo = fctrl));
 }
 
 void dw3k_schedule_tx(uint32_t sched_t32) {
@@ -224,7 +224,7 @@ uint32_t dw3k_tx_leadtime_t32() {
     return bug("BUG: Not ready for dw3k_tx_leadtime_t32"), 0;
 
   int pre_sym;
-  switch ((dw3k_read<uint16_t>(DW3K_TX_FCTRL_LO) >> 12) & 0xF) {
+  switch ((dw3k_read<uint16_t>(DW3K_TX_FCTRL_64) >> 12) & 0xF) {
     case 0x1: pre_sym = 64; break;
     case 0x2: pre_sym = 1024; break;
     case 0x3: pre_sym = 4096; break;
@@ -256,7 +256,7 @@ uint64_t dw3k_tx_expected_t40(uint32_t sched_t32) {
 uint64_t dw3k_tx_timestamp_t40() {
   if (last_status != DW3KStatus::TransmitDone)
     return bug("BUG: Not ready for dw3k_tx_stamp"), 0;
-  return dw3k_read<uint64_t>(DW3K_TX_STAMP_LO);
+  return dw3k_read<uint64_t>(DW3K_TX_STAMP_64);
 }
 
 void dw3k_start_rx() {
@@ -272,13 +272,13 @@ void dw3k_retrieve_rx(int offset, int size, void* out) {
     return bug("BUF: Not ready for dw3k_retrieve_rx");
   if (offset < 0 || size < 0 || offset + size > dw3k_packet_size + 2)
     return bug("BUG: Bad offset/size for dw3k_retrieve_rx");
-  dw3k_read({DW3K_RX_BUFFER_0.file, uint16_t(offset)}, out, size);
+  dw3k_read({DW3K_RX_BUFFER0.file, uint16_t(offset)}, out, size);
 }
 
 uint64_t dw3k_rx_timestamp_t40() {
   if (last_status != DW3KStatus::ReceiveDone)
     return bug("BUF: Not ready for dw3k_rx_timestamp_t40"), 0;
-  return dw3k_read<uint64_t>(DW3K_RX_STAMP_LO);
+  return dw3k_read<uint64_t>(DW3K_RX_STAMP_64);
 }
 
 int dw3k_rx_size() {

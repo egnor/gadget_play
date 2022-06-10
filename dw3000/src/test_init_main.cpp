@@ -44,7 +44,7 @@ void loop() {
   dw3k_buffer_tx(msg, sizeof(msg));
 
   auto const lead_t32 = dw3k_tx_leadtime_t32();
-  auto const extra_t32 = 50e-6 * dw3k_time32_hz;
+  auto const extra_t32 = 100e-6 * dw3k_time32_hz;
   auto const start_t32 = dw3k_clock_t32();
   auto const sched_t32 = start_t32 + lead_t32 + extra_t32;
   auto const expect_t40 = dw3k_tx_expected_t40(sched_t32);

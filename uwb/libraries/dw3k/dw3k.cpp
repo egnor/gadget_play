@@ -73,7 +73,8 @@ DW3KStatus dw3k_poll() {
       return last_status;
     }
 
-    dw3k_maskset16(DW3K_OTP_CFG, ~0, 0x0180);  // BIAS_KICK, LDO_KICK
+    dw3k_write(DW3K_OTP_CFG, uint16_t(0x15C0));  // OPS, BIAS, LDO, DGC (ch5)
+    // dw3k_write(DW3K_OTP_CFG, uint16_t(0x35C0));  // OPS, BIAS, LDO, DGC (ch9)
     dw3k_maskset16(DW3K_BIAS_CTRL, ~0x1F, bias_tune);
     dw3k_write(DW3K_XTAL, xtal_trim);
 
@@ -83,8 +84,8 @@ DW3KStatus dw3k_poll() {
     // dw3k_write(DW3K_TX_POWER, 0xFFFFFCFF);
     dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094E));  // ch5
     // dw3k_write(DW3K_CHAN_CTRL, (cache_chan_ctrl = 0x094F));  // ch9
-    dw3k_write(DW3K_DGC_CFG, uint16_t(0xE4F5));
-    dw3k_write(DW3K_DTUNE0, uint16_t(0x100C));
+    dw3k_write(DW3K_DGC_CFG, uint16_t(0xE4F5));  // Change THR_64 per manual
+    dw3k_write(DW3K_DTUNE0, uint16_t(0x100C));  // Clear DT0B4 per manual
     // dw3k_write(DW3K_DTUNE3, 0xAF5F35CC);  // from manual
     dw3k_write(DW3K_DTUNE3, 0xAF5F584C);  // from deca_driver for !no-data
     dw3k_write(DW3K_RF_TX_CTRL1, uint8_t(0x0E));
@@ -122,13 +123,22 @@ DW3KStatus dw3k_poll() {
   if (last_status == DS::ResetWaitPLL) {
     if (!(sys_status & 0x2)) return last_status;
     if (dw3k_read<uint16_t>(DW3K_PLL_CAL) & 0x100) return last_status;
-    dw3k_write<uint8_t>(DW3K_RX_CAL, 0x11);
+    dw3k_write(DW3K_LDO_CTRL, 0x105);      // VDDMS1, VDDMS3, VDDIF2
+    dw3k_write(DW3K_RX_CAL, 0x00020011u);  // COMP_DLY, CAL_EN, CAL_MODE
     last_status = DS::CalibrationWait;
   }
 
   if (last_status == DS::CalibrationWait) {
     if (!dw3k_read<uint8_t>(DW3K_RX_CAL_STS)) return last_status;
-    dw3k_write<uint8_t>(DW3K_RX_CAL, 0);
+    dw3k_write(DW3K_LDO_CTRL, 0x0u);
+    dw3k_write(DW3K_RX_CAL, 0x00030000u);  // COMP_DLY=2 + read (deca_driver)
+    auto const resi = dw3k_read<uint32_t>(DW3K_RX_CAL_RESI);
+    auto const resq = dw3k_read<uint32_t>(DW3K_RX_CAL_RESQ);
+    if (resi == 0x1FFFFFFF || resq == 0x1FFFFFFF) {
+      last_status = DS::ChipError;
+      error_text = "Chip: RX calibration failed";
+      return last_status;
+    }
     last_status = DS::Ready;
   }
 
@@ -266,6 +276,19 @@ void dw3k_start_rx() {
   last_status = DW3KStatus::ReceiveListen;
 }
 
+int dw3k_rx_size() {
+  if (last_status != DW3KStatus::ReceiveAnalyze &&
+      last_status != DW3KStatus::ReceiveDone)
+    return bug("BUF: Not ready for dw3k_rx_size"), 0;
+  auto const size_with_crc = dw3k_read<uint16_t>(DW3K_RX_FINFO) & 0x3F;
+  if (size_with_crc < 2 || size_with_crc > dw3k_packet_size + 2) {
+    last_status = DW3KStatus::ChipError;
+    error_text = "Chip: Bad RX_FINFO packet size";
+    return 0;
+  }
+  return size_with_crc - 2;
+}
+
 void dw3k_retrieve_rx(int offset, int size, void* out) {
   if (last_status != DW3KStatus::ReceiveAnalyze &&
       last_status != DW3KStatus::ReceiveDone)
@@ -278,20 +301,18 @@ void dw3k_retrieve_rx(int offset, int size, void* out) {
 uint64_t dw3k_rx_timestamp_t40() {
   if (last_status != DW3KStatus::ReceiveDone)
     return bug("BUF: Not ready for dw3k_rx_timestamp_t40"), 0;
-  return dw3k_read<uint64_t>(DW3K_RX_STAMP_64);
+  auto const stamp_lo = DW3K_RX_STAMP_64;
+  DW3KRegisterAddress stamp_hi{stamp_lo.file, uint16_t(stamp_lo.offset + 4)};
+  return dw3k_read<uint32_t>(stamp_lo) |
+      (uint64_t(dw3k_read<uint8_t>(stamp_hi)) << 32u);
 }
 
-int dw3k_rx_size() {
-  if (last_status != DW3KStatus::ReceiveAnalyze &&
-      last_status != DW3KStatus::ReceiveDone)
-    return bug("BUF: Not ready for dw3k_rx_size"), 0;
-  auto const size_with_crc = dw3k_read<uint16_t>(DW3K_RX_FINFO) & 0x3F;
-  if (size_with_crc < 2 || size_with_crc > dw3k_packet_size + 2) {
-    last_status = DW3KStatus::ChipError;
-    error_text = "Chip: Bad RX_FINFO packet size";
-    return 0;
-  }
-  return size_with_crc - 2;
+float dw3k_rx_clock_offset() {
+  if (last_status != DW3KStatus::ReceiveDone)
+    return bug("BUF: Not ready for dw3k_rx_clock_offset"), 0;
+  int32_t car_int = dw3k_read<int32_t>(DW3K_DRX_CAR_INT) & 0x1FFFFF;
+  if (car_int & 0x100000) car_int |= 0xFFE00000;
+  return car_int * -0.5731e-9f;
 }
 
 void dw3k_end_txrx() {
@@ -338,20 +359,57 @@ char const* dw3k_status_text() {
   return "[BAD STATUS]";
 }
 
-char const* dw3k_counter(int c, int* out) {
-  struct CounterDef { char const* name; DW3KRegisterAddress const* addr; };
-  static CounterDef const defs[dw3k_num_counters] = {
-#define C(n) {#n, &DW3K_EVC_##n}
+bool dw3k_wait_verbose(DW3KStatus wanted, int timeout_millis) {
+  struct Counter { char const* n; DW3KRegisterAddress const a; int v; };
+  static Counter counters[] = {
+#define C(n) {#n, DW3K_EVC_##n, -1}
     C(PHE), C(RSE), C(FCG), C(FCE), C(FFR), C(OVR), C(STO), C(PTO), C(FWTO),
     C(TXFS), C(HPW), C(SWCE), C(CPQE), C(VWARN),
 #undef C
   };
 
-  if (c < 0 || c >= dw3k_num_counters)
-    return bug("BUG: Bad index for dw3k_counter"), nullptr;
-  if (out) {
-    *out = (last_status < DW3KStatus::ResetWaitPLL) ? 0 :
-        dw3k_read<uint16_t>(*defs[c].addr);
+  auto const start_millis = millis();
+  auto last_status = DW3KStatus::Invalid;
+  for (int32_t i = 0;; ++i) {
+    auto const status = dw3k_poll();
+    if (status != last_status || !(i % 10000)) {
+      if (status >= DW3KStatus::ResetWaitPLL) {
+        Serial.printf(
+            "DW3K %-15s (status=%012x state=%08x)...\n",
+            dw3k_status_text(),
+            dw3k_read<uint64_t>(DW3K_SYS_STATUS_64),
+            dw3k_read<uint32_t>(DW3K_SYS_STATE)
+        );
+      } else {
+        Serial.printf("DW3K %s...\n", dw3k_status_text());
+      }
+    }
+
+    if (!(i % 1000) && (status >= DW3KStatus::ResetWaitPLL)) {
+      bool counter_changed = false;
+      for (auto& counter : counters) {
+        auto const v = dw3k_read<uint16_t>(counter.a);
+        if ((v > 0 || counter.v >= 0) && int32_t(v) != counter.v) {
+          counter.v = v;
+          counter_changed = true;
+        }
+      }
+      if (counter_changed) {
+        Serial.printf("DW3K counters:");
+        for (auto& counter : counters) {
+          if (counter.v >= 0) Serial.printf(" %s=%d", counter.n, counter.v);
+        }
+        Serial.printf("\n");
+      }
+    }
+
+    if (status == wanted) return true;
+
+    if (timeout_millis && !(i % 100)) {
+      if (int(millis() - start_millis) >= timeout_millis) return false;
+    }
+
+    delayMicroseconds(10);
+    last_status = status;
   }
-  return defs[c].name;
 }

@@ -5,54 +5,13 @@
 #include "dw3k_registers.h"
 #include "dw3k_spi.h"
 
-static void wait_for(DW3KStatus wanted) {
-  auto last_status = DW3KStatus::Invalid;
-  int last_counters[dw3k_num_counters] = {};
-  for (int i = 0;; ++i) {
-    auto const s = dw3k_poll();
-    if (s != last_status || !(i % 10000)) {
-      Serial.printf("DW3K %-15s", dw3k_status_text());
-      if (s >= DW3KStatus::ResetWaitPLL) {
-        Serial.printf(
-            " (status=%012x state=%08x)",
-            dw3k_read<uint64_t>(DW3K_SYS_STATUS_64),
-            dw3k_read<uint32_t>(DW3K_SYS_STATE)
-        );
-      }
-      Serial.printf("...\n");
-    }
-
-    if (!(i % 1000)) {
-      bool counter_changed = false;
-      for (int c = 0; c < dw3k_num_counters; ++c) {
-        int const old_value = last_counters[c];
-        dw3k_counter(c, &last_counters[c]);
-        if (last_counters[c] != old_value) counter_changed = true;
-      }
-      if (counter_changed) {
-        Serial.printf("DW3K counters:");
-        for (int c = 0; c < dw3k_num_counters; ++c) {
-          auto const v = last_counters[c];
-          if (v) Serial.printf(" %s=%d", dw3k_counter(c), v);
-        }
-        Serial.printf("\n");
-      }
-    }
-
-    if (s == wanted) break;
-    delayMicroseconds(10);
-    last_status = s;
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
 
   Serial.printf("Resetting DW3K...\n");
   dw3k_reset();
-  wait_for(DW3KStatus::Ready);
-
+  dw3k_wait_verbose(DW3KStatus::ResetWaitPLL);
   Serial.printf("DEV_ID      %08x\n", dw3k_read<uint32_t>(DW3K_DEV_ID));
   Serial.printf("SYS_CFG     %08x\n", dw3k_read<uint32_t>(DW3K_SYS_CFG));
   Serial.printf("TX_FCTRL    %012x\n", dw3k_read<uint64_t>(DW3K_TX_FCTRL_64));
@@ -65,10 +24,16 @@ void setup() {
   Serial.printf("RX_SFD_TOC  %04x\n", dw3k_read<uint16_t>(DW3K_RX_SFD_TOC));
   Serial.printf("PRE_TOC     %04x\n", dw3k_read<uint16_t>(DW3K_PRE_TOC));
   Serial.printf("DTUNE3      %08x\n", dw3k_read<uint32_t>(DW3K_DTUNE3));
+  Serial.printf("RF_RX_CTRL2 %02x\n", dw3k_read<uint32_t>(DW3K_RF_RX_CTRL2));
   Serial.printf("RF_TX_CTRL1 %02x\n", dw3k_read<uint8_t>(DW3K_RF_TX_CTRL1));
   Serial.printf("RF_TX_CTRL2 %08x\n", dw3k_read<uint32_t>(DW3K_RF_TX_CTRL2));
+  Serial.printf("LDO_TUNE    %016x\n", dw3k_read<uint64_t>(DW3K_LDO_TUNE_64));
+  Serial.printf("LDO_CTRL    %08x\n", dw3k_read<uint32_t>(DW3K_LDO_CTRL));
   Serial.printf("SEQ_CTRL    %08x\n", dw3k_read<uint32_t>(DW3K_SEQ_CTRL));
   Serial.printf("CIA_CONF    %08x\n", dw3k_read<uint32_t>(DW3K_CIA_CONF));
+  Serial.printf("\n");
+
+  dw3k_wait_verbose(DW3KStatus::Ready);
 }
 
 void loop() {
@@ -86,7 +51,7 @@ void loop() {
   auto const before_t32 = dw3k_clock_t32();
   dw3k_schedule_tx(sched_t32);
   auto const added_t32 = dw3k_clock_t32();
-  wait_for(DW3KStatus::TransmitDone);
+  dw3k_wait_verbose(DW3KStatus::TransmitDone);
   auto const done_t32 = dw3k_clock_t32();
   auto const actual_t40 = dw3k_tx_timestamp_t40();
 
@@ -101,11 +66,11 @@ void loop() {
   Serial.printf("done   %s\n", dtostrf(done_t32 / dw3k_time32_hz, 12, 9, n));
 
   dw3k_end_txrx();
-  wait_for(DW3KStatus::Ready);
+  dw3k_wait_verbose(DW3KStatus::Ready);
 
   Serial.printf("\nReceiving...\n");
   dw3k_start_rx();
-  wait_for(DW3KStatus::ReceiveDone);
+  dw3k_wait_verbose(DW3KStatus::ReceiveDone);
 
   uint8_t buf[dw3k_packet_size];
   auto const size = dw3k_rx_size();
@@ -119,5 +84,5 @@ void loop() {
   Serial.printf("]\n");
 
   dw3k_end_txrx();
-  wait_for(DW3KStatus::Ready);
+  dw3k_wait_verbose(DW3KStatus::Ready);
 }

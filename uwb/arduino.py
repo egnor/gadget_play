@@ -86,7 +86,7 @@ if args.build or args.upload:
 
     if args.terminal:  # Re-acquire port after upload
         while True:
-            time.sleep(0.5)
+            time.sleep(1.0)
             try:
                 port = find_port(args.port)
                 break

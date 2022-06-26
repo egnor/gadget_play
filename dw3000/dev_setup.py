@@ -21,7 +21,7 @@ if not all(p in installed for p in apt_packages):
 import venv  # In case it just got installed above.
 print()
 print(f"=== Python packages (pip install ...) ===")
-venv_dir = source_dir / "build" / "python_venv"
+venv_dir = source_dir / "python_venv"
 venv_bin = venv_dir / "bin"
 if not venv_dir.is_dir():
     print(f"Creating {venv_dir}...")

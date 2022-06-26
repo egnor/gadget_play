@@ -12,6 +12,7 @@ void setup() {
   Serial.printf("Resetting DW3K...\n");
   dw3k_reset();
   dw3k_wait_verbose(DW3KStatus::ResetWaitPLL);
+  Serial.printf("Registers:\n");
   Serial.printf("DEV_ID      %08x\n", dw3k_read<uint32_t>(DW3K_DEV_ID));
   Serial.printf("SYS_CFG     %08x\n", dw3k_read<uint32_t>(DW3K_SYS_CFG));
   Serial.printf("TX_FCTRL    %012x\n", dw3k_read<uint64_t>(DW3K_TX_FCTRL_64));
@@ -27,10 +28,19 @@ void setup() {
   Serial.printf("RF_RX_CTRL2 %02x\n", dw3k_read<uint32_t>(DW3K_RF_RX_CTRL2));
   Serial.printf("RF_TX_CTRL1 %02x\n", dw3k_read<uint8_t>(DW3K_RF_TX_CTRL1));
   Serial.printf("RF_TX_CTRL2 %08x\n", dw3k_read<uint32_t>(DW3K_RF_TX_CTRL2));
+  Serial.printf("OTP_CFG     %08x\n", dw3k_read<uint32_t>(DW3K_OTP_CFG));
   Serial.printf("LDO_TUNE    %016x\n", dw3k_read<uint64_t>(DW3K_LDO_TUNE_64));
   Serial.printf("LDO_CTRL    %08x\n", dw3k_read<uint32_t>(DW3K_LDO_CTRL));
   Serial.printf("SEQ_CTRL    %08x\n", dw3k_read<uint32_t>(DW3K_SEQ_CTRL));
   Serial.printf("CIA_CONF    %08x\n", dw3k_read<uint32_t>(DW3K_CIA_CONF));
+  Serial.printf("BIAS_CTRL   %08x\n", dw3k_read<uint32_t>(DW3K_BIAS_CTRL));
+  Serial.printf("\n");
+  Serial.printf("OTP:\n");
+  Serial.printf("EUID_HI     %08x\n", dw3k_read_otp(DW3K_OTP_EUID_HI));
+  Serial.printf("EUID_LO     %08x\n", dw3k_read_otp(DW3K_OTP_EUID_LO));
+  Serial.printf("LDO_TUNE_HI %08x\n", dw3k_read_otp(DW3K_OTP_LDO_TUNE_HI));
+  Serial.printf("LDO_TUNE_LO %08x\n", dw3k_read_otp(DW3K_OTP_LDO_TUNE_LO));
+  Serial.printf("BIAS_TUNE   %08x\n", dw3k_read_otp(DW3K_OTP_BIAS_TUNE));
   Serial.printf("\n");
 
   dw3k_wait_verbose(DW3KStatus::Ready);

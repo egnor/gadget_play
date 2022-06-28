@@ -36,8 +36,9 @@ void setup() {
   Serial.printf("BIAS_CTRL   %08x\n", dw3k_read<uint32_t>(DW3K_BIAS_CTRL));
   Serial.printf("\n");
   Serial.printf("OTP:\n");
-  Serial.printf("EUID_HI     %08x\n", dw3k_read_otp(DW3K_OTP_EUID_HI));
-  Serial.printf("EUID_LO     %08x\n", dw3k_read_otp(DW3K_OTP_EUID_LO));
+  Serial.printf("CHIP_ID     %08x\n", dw3k_read_otp(DW3K_OTP_CHIP_ID));
+  Serial.printf("LOT_ID      %08x\n", dw3k_read_otp(DW3K_OTP_LOT_ID));
+  Serial.printf("REVISION    %08x\n", dw3k_read_otp(DW3K_OTP_REVISION));
   Serial.printf("LDO_TUNE_HI %08x\n", dw3k_read_otp(DW3K_OTP_LDO_TUNE_HI));
   Serial.printf("LDO_TUNE_LO %08x\n", dw3k_read_otp(DW3K_OTP_LDO_TUNE_LO));
   Serial.printf("BIAS_TUNE   %08x\n", dw3k_read_otp(DW3K_OTP_BIAS_TUNE));

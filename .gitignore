@@ -24,4 +24,6 @@ python_venv/
 *.gto
 *.gts
 *.kicad_prl
+*.lck
 *.zip
+plots/

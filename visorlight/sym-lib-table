@@ -1,4 +1,4 @@
 (sym_lib_table
   (version 7)
-  (lib (name "project_parts")(type "KiCad")(uri "${KIPRJMOD}/project_parts.kicad_sym")(options "")(descr ""))
+  (lib (name "visorlight_parts")(type "KiCad")(uri "${KIPRJMOD}/visorlight_parts.kicad_sym")(options "")(descr ""))
 )

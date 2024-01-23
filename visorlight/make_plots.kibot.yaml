@@ -1,0 +1,105 @@
+kibot:
+  version: 1
+
+import:
+  - file: "JLCPCB"
+
+preflight:
+  erc_warnings: true
+  run_drc: true
+  run_erc: true
+  # filters:
+
+global:
+  out_dir: "plots"
+  filters:
+    - filter: "Nuisance warning about null environment.vars"
+      error: "W009"
+    - filter: "Component value doesn't match kibot's rules"
+      error: "W020"
+    - filter: "Numerous warnings about missing simulation models"
+      error: "W058"
+      regex: "simulation_model_issue"
+
+outputs:
+  #
+  # Output files for JLCPCB (extend the rules imported earlier) 
+  #
+
+  - name: "jlcpcb_gerbers"
+    comment: "JLCPCB layers"
+    type: "gerber"
+    extends: "_JLCPCB_gerbers"
+    disable_run_by_default: "_JLCPCB_gerbers"
+    dir: "for_jlcpcb"
+    layers:
+      - "copper"
+      - "technical"
+      - "Edge.Cuts"
+    options:
+      plot_footprint_values: true
+
+  - name: "jlcpcb_drills"
+    comment: "JLCPCB drill positions"
+    type: "excellon"
+    extends: "_JLCPCB_drill"
+    disable_run_by_default: "_JLCPCB_drill"
+    dir: "for_jlcpcb"
+    options:
+      map:
+        type: "gerber"
+        output: "%f%i%I%v.%x"
+
+  - name: "jlcpcb_bom"
+    comment: "JLCPCB bill of materials"
+    type: "bom"
+    extends: "_JLCPCB_bom"
+    disable_run_by_default: "_JLCPCB_bom"
+    dir: "for_jlcpcb"
+
+  - name: "jlcpcb_positions"
+    comment: "JLCPCB pick and place positions"
+    type: "position"
+    extends: "_JLCPCB_position"
+    disable_run_by_default: "_JLCPCB_position"
+    dir: "for_jlcpcb"
+    options:
+      only_smd: false
+      pre_transform: jlcpcb_rotation_filter
+      use_aux_axis_as_origin: false
+
+  - name: "jlcpcb_zip"
+    comment: "JLCPCB combined zip file"
+    type: "compress"
+    disable_run_by_default: "_JLCPCB_compress"
+    options:
+      output: "%f%I%v_jlcpcb.%x"
+      files:
+        - from_output: "jlcpcb_gerbers"
+        - from_output: "jlcpcb_drills"
+        - from_output: "jlcpcb_bom"
+        - from_output: "jlcpcb_positions"
+
+  #
+  # DXF for CAD reference
+  #
+
+  - name: "cad_drawings"
+    type: "dxf"
+    comment: "DXF exports for CAD"
+    dir: "for_cad"
+    layers:
+      - "technical"
+      - "Edge.Cuts"
+    options:
+      polygon_mode: false
+      metric_units: true
+      use_aux_axis_as_origin: true
+
+filters:
+  - name: jlcpcb_rotation_filter
+    comment: "Adjust rotation to match JLCPCB conventions"
+    type: rot_footprint
+    invert_bottom: true
+    rotations:
+      - [".*", 0]

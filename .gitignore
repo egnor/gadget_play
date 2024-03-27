@@ -5,9 +5,11 @@ build/
 
 # Arduino
 .ardi
+.pio
 
 # Python
 *.pyc
+*.egg-info
 __pycache__/
 python_venv/
 

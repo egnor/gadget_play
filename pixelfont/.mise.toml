@@ -1,0 +1,6 @@
+[tools]
+python = {version = "3.11", virtualenv = "python_venv"}
+
+[settings]
+experimental = true
+python_venv_auto_create = true

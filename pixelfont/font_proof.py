@@ -10,7 +10,7 @@ class FontSheet:
     url: str
     offset: tuple[int, int]
     spacing: tuple[int, int]
-    zoom: int
+    unzoom: int
     layout: list[str]
 
 SITE = "https://img.itch.zone"
@@ -27,28 +27,28 @@ SHEETS = {
     url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0Mjk1LnBuZw==/original/sKUkqt.png",
     offset=(648, 57),
     spacing=(18, 18),
-    zoom=3,
+    unzoom=3,
     layout=LAYOUT,
   ),
   "7": FontSheet(
     url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0MzAzLnBuZw==/original/a207oZ.png",
     offset=(352, 17),
     spacing=(8, 8),
-    zoom=1,
+    unzoom=1,
     layout=LAYOUT,
   ),
   "9": FontSheet(
     url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0MzA0LnBuZw==/original/CTuPZD.png",
     offset=(270, 63),
     spacing=(30, 30),
-    zoom=3,
+    unzoom=3,
     layout=LAYOUT,
   ),
   "11": FontSheet(
     url=f"{SITE}/aW1hZ2UvODU2NjU5LzE2MDE3MTAzLnBuZw==/original/d1rDfz.png",
     offset=(972, 75),
     spacing=(36, 36),
-    zoom=3,
+    unzoom=3,
     layout=LAYOUT,
   ),
 }
@@ -62,7 +62,7 @@ def load_fonts():
 
         ox, oy = sheet.offset
         cw, ch = sheet.spacing
-        z = sheet.zoom
+        z = sheet.unzoom
 
         glyphs = fonts.setdefault(name, {})
         for cell_y, row in enumerate(LAYOUT):

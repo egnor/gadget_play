@@ -7,7 +7,8 @@ version = "0.1"
 
 # Dependencies needed at runtime
 dependencies = [
-  "imageio",
+  "imageio~=2.34.1",
+  "requests~=2.31.0",
 ]
 
 # How to build this project as a Python package

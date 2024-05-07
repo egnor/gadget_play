@@ -3,7 +3,9 @@
 import dataclasses
 import imageio.v3 as iio
 import numpy
-import urllib.parse
+import requests
+import shutil
+from pathlib import Path
 
 @dataclasses.dataclass
 class FontSheet:
@@ -12,15 +14,16 @@ class FontSheet:
     spacing: tuple[int, int]
     unzoom: int
     layout: list[str]
+    inherits: str = None
 
 @dataclasses.dataclass
 class Font:
     name: str
     glyphs: dict[str, numpy.ndarray]
 
-SITE = "https://img.itch.zone"
+ITCH = "https://img.itch.zone"
 
-LAYOUT = [
+COMMON_LAYOUT = [
   "ABCDEFGH", "IJKLMNOP", "QRSTUVWX", "YZ",
   "abcdefgh", "ijklmnop", "qrstuvwx", "yz",
   "01234567", "89",
@@ -29,32 +32,32 @@ LAYOUT = [
 
 SHEETS = {
   "5px": FontSheet(
-    url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0Mjk1LnBuZw==/original/sKUkqt.png",
-    offset=(648, 57),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUwODk5LnBuZw==/original/n1fowV.png",
+    offset=(18 * 9 * 5, 57),
     spacing=(18, 18),
     unzoom=3,
-    layout=LAYOUT,
+    layout=COMMON_LAYOUT,
   ),
   "7px": FontSheet(
-    url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0MzAzLnBuZw==/original/a207oZ.png",
-    offset=(352, 17),
-    spacing=(8, 8),
-    unzoom=1,
-    layout=LAYOUT,
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUxMjY5LnBuZw==/original/aNa7D3.png",
+    offset=(24 * (17 + 9 * 5), 51),
+    spacing=(24, 24),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
   ),
   "9px": FontSheet(
-    url=f"{SITE}/aW1hZ2UvODU2NjU5LzE1OTc0MzA0LnBuZw==/original/CTuPZD.png",
-    offset=(270, 60),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUxMjcwLnBuZw==/original/Qb71JV.png",
+    offset=(30 * 9 * 6, 60),
     spacing=(30, 30),
     unzoom=3,
-    layout=LAYOUT,
+    layout=COMMON_LAYOUT,
   ),
   "11px": FontSheet(
-    url=f"{SITE}/aW1hZ2UvODU2NjU5LzE2MDE3MTAzLnBuZw==/original/d1rDfz.png",
-    offset=(972, 75),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDQ2NzQzLnBuZw==/original/Z7FXHJ.png",
+    offset=(36 * 9 * 3, 75),
     spacing=(36, 36),
     unzoom=3,
-    layout=LAYOUT,
+    layout=COMMON_LAYOUT,
   ),
 }
 
@@ -135,30 +138,54 @@ int main(int argc, char *argv[]) {
 Markdown *bold*, _italic_, and `monospace`. 1234567890 < 9876543210 > 0x12345678
 """.strip()
 
+def load_image(url):
+    surl = url.replace("https://", "")
+    cache_file = Path("dl.tmp") / surl.replace("://", ":").replace("//", "/")
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    if cache_file.is_file():
+        print(f"♻️ {cache_file}")
+        loaded = iio.imread(cache_file)
+    else:
+        print(f"📥 {surl}")
+        response = requests.get(url)
+        response.raise_for_status()
+        loaded = iio.imread(response.content)
+
+        print(f"💾 {cache_file}")
+        temp_file = cache_file.with_suffix(cache_file.suffix + ".tmp")
+        temp_file.write_bytes(response.content)
+        temp_file.rename(cache_file)
+
+    return (loaded.mean(axis=2) < 128)
+
 def load_fonts():
     fonts = {}
+    im = None
+    im_url = None
     for name, sheet in SHEETS.items():
-        url = urllib.parse.urlsplit(sheet.url)
-        print(f"📥 \"{name}\" {url.path.split('/')[-1]}")
-        im = (iio.imread(url.geturl()).mean(axis=2) < 128)
+        im = load_image(sheet.url)
 
         off_x, off_y = sheet.offset
         cell_w, cell_h = sheet.spacing
         z = sheet.unzoom
 
-        glyphs = {}
-        for cell_y, row in enumerate(LAYOUT):
+        glyphs = fonts[sheet.inherits].glyphs.copy() if sheet.inherits else {}
+        for cell_y, row in enumerate(sheet.layout):
             for cell_x, ch in enumerate(row):
+                if ch.isspace():
+                    continue
                 x = off_x + cell_x * cell_w
                 y = off_y + cell_y * cell_h
                 cell = im[y:y + cell_h, x:x + cell_w][::z, ::z]
                 nzy, nzx = cell.nonzero()
-                if len(nzy) and len(nzx):
-                    glyphs[ch] = cell[:nzy.max() + 1, :nzx.max() + 1]
+                if not (len(nzy) and len(nzx)):
+                    raise ValueError(
+                        f"Empty \"{ch}\" in \"{name}\" @ ({x},{y})")
+                glyphs[ch] = cell[:nzy.max() + 1, :nzx.max() + 1]
 
         max_w = max(g.shape[1] for g in glyphs.values())
         max_h = max(g.shape[0] for g in glyphs.values())
-        if not glyphs.get(" "):
+        if " " not in glyphs:
             glyphs[" "] = numpy.zeros((max_h, (max_w + 3) // 4), dtype=bool)
 
         fonts[name] = Font(name, glyphs)
@@ -173,7 +200,7 @@ def text_block(font, width, text):
     gap_w = (en_w // 6) + 1
 
     max_h = max(g.shape[0] for g in font.glyphs.values())
-    gap_h = (max_h // 10) + 1
+    gap_h = 1
     row_h = max_h + gap_h
 
     rows = []
@@ -218,20 +245,24 @@ def zoom_pixels(im, z):
 
 
 def main():
+    out_dir = Path("proofs.tmp")
+    shutil.rmtree(out_dir, ignore_errors=True)
+    out_dir.mkdir(exist_ok=True)
+
     fonts = load_fonts()
     for name, font in fonts.items():
         width = 120 * font.glyphs["x"].shape[1]
         proof = text_block(font, width, f"{HOEFLER_PROOF}\n\n{PUNCT_PROOF}")
-        iio.imwrite(f"proof_{name}.png", zoom_pixels(proof, 3))
+        iio.imwrite(out_dir / f"{name}.png", zoom_pixels(proof, 3))
 
     width = 200
     blocks = []
     for name, font in fonts.items():
         blocks.append(text_block(font, width, f"{name}: {PANGRAM_PROOF}"))
-        blocks.append(numpy.zeros((5, width), dtype=bool))
+        blocks.append(numpy.zeros((4, width), dtype=bool))
 
     proof = numpy.concatenate(blocks[:-1], axis=0)
-    iio.imwrite("proof_all.png", zoom_pixels(proof, 3))
+    iio.imwrite(out_dir / "all.png", zoom_pixels(proof, 3))
 
 
 if __name__ == "__main__":

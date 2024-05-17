@@ -14,7 +14,7 @@ class FontSheet:
     spacing: tuple[int, int]
     unzoom: int
     layout: list[str]
-    inherits: str = None
+    inherit: str = None
 
 @dataclasses.dataclass
 class Font:
@@ -31,31 +31,52 @@ COMMON_LAYOUT = [
 ]
 
 SHEETS = {
+  "4px": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MDM1LnBuZw==/original/F9%2BCQK.png",
+    offset=(15 * 9 * 0, 48),
+    spacing=(15, 15),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "4px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MTczNzQxLnBuZw==/original/TXKzn1.png",
+    offset=(15 * 9 * 0, 48),
+    spacing=(18, 15),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
   "5px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUwODk5LnBuZw==/original/n1fowV.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU4Njc5LnBuZw==/original/q%2BWiPl.png",
     offset=(18 * 9 * 5, 57),
     spacing=(18, 18),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "7px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUxMjY5LnBuZw==/original/aNa7D3.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzM1LnBuZw==/original/%2BAHWNZ.png",
     offset=(24 * (17 + 9 * 5), 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "9px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDUxMjcwLnBuZw==/original/Qb71JV.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzI2LnBuZw==/original/tl3lmr.png",
     offset=(30 * 9 * 6, 60),
     spacing=(30, 30),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "11px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDQ2NzQzLnBuZw==/original/Z7FXHJ.png",
-    offset=(36 * 9 * 3, 75),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzE5LnBuZw==/original/QKWump.png",
+    offset=(36 * (9 * 4 + 15), 75),
     spacing=(36, 36),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "13px": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MTU2ODEyLnBuZw==/original/JU1J7B.png",
+    offset=(42 * 9 * 5, 88),
+    spacing=(42, 42),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
@@ -120,13 +141,17 @@ ZEBRA ZOMBIE OF THE PRIZED OZONE FOR THE FRANZ ARROZ BUZZING.
 """.strip()
 
 PANGRAM_PROOF = """
-How quickly DAFT jumping ZEBRAS vex!
+HOW quickly DAFT jumping ZEBRAS vex!
 """.strip()
 
 PUNCT_PROOF = """
 To my "friends" & "family" (don't worry?): "Hello, world!" [me@example.com]
+
 https://example.com:8080/index.html?q=Hello%2C%20world%21#top
+
 C:\Program Files (x86)\Steam\steam.exe
+
+ip=192.168.3.47 net=255.255.255.0 gw=192.168.3.1
 
 email_rx = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$")
 
@@ -163,13 +188,14 @@ def load_fonts():
     im = None
     im_url = None
     for name, sheet in SHEETS.items():
+        print(f"▶️ \"{name}\"")
         im = load_image(sheet.url)
 
         off_x, off_y = sheet.offset
         cell_w, cell_h = sheet.spacing
         z = sheet.unzoom
 
-        glyphs = fonts[sheet.inherits].glyphs.copy() if sheet.inherits else {}
+        glyphs = fonts[sheet.inherit].glyphs.copy() if sheet.inherit else {}
         for cell_y, row in enumerate(sheet.layout):
             for cell_x, ch in enumerate(row):
                 if ch.isspace():
@@ -179,8 +205,10 @@ def load_fonts():
                 cell = im[y:y + cell_h, x:x + cell_w][::z, ::z]
                 nzy, nzx = cell.nonzero()
                 if not (len(nzy) and len(nzx)):
-                    raise ValueError(
-                        f"Empty \"{ch}\" in \"{name}\" @ ({x},{y})")
+                    if not sheet.inherit:
+                        raise ValueError(
+                            f"Empty \"{ch}\" in \"{name}\" @ ({x},{y})")
+                    continue
                 glyphs[ch] = cell[:nzy.max() + 1, :nzx.max() + 1]
 
         max_w = max(g.shape[1] for g in glyphs.values())
@@ -246,7 +274,10 @@ def zoom_pixels(im, z):
 
 def main():
     out_dir = Path("proofs.tmp")
-    shutil.rmtree(out_dir, ignore_errors=True)
+    old_dir = Path("proofs.old.tmp")
+    if out_dir.exists():
+        shutil.rmtree(old_dir, ignore_errors=True)
+        out_dir.rename(old_dir)
     out_dir.mkdir(exist_ok=True)
 
     fonts = load_fonts()

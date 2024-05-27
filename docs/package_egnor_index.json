@@ -16,10 +16,10 @@
           "boards": [
             { "name": "Palace Games GRIPPY" }
           ],
-          "url": "https://egnor.github.io/gadget_play/egnor_esp32_0.1.zip",
-          "archiveFileName": "egnor_esp32_0.1.zip",
-          "checksum": "SHA-256:b32cac7586e83a2b35ff70701fb1545cd65f7eb4865648630e6a2dcabcea5651",
-          "size": 2698
+          "url": "https://egnor.github.io/gadget_play/egnor_esp32_0.2.zip",
+          "archiveFileName": "egnor_esp32_0.2.zip",
+          "checksum": "SHA-256:5cd226d005852536bb6ce5fa2a90dca37580993e84c2caecdcddc016113183be",
+          "size": 1705
         }
       ]
     }

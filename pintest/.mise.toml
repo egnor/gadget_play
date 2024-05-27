@@ -11,6 +11,6 @@ python_compile = false
 python_venv_auto_create = true
 
 [env]
-ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS = "https://egnor.github.io/gadget_play/package.json,https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json"
+ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS = "https://egnor.github.io/gadget_play/package_egnor_index.json https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json"
 ARDUINO_DIRECTORIES_DATA = "{{config_root}}/build/arduino"
 ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL = "true"

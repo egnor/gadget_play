@@ -10,7 +10,7 @@
         {
           "name": "esp32",
           "architecture": "esp32",
-          "version": "0.1",
+          "version": "0.2",
           "category": "esp32",
           "help": { "online": "" },
           "boards": [

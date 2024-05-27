@@ -1,7 +1,7 @@
 {
   "packages": [
     {
-      "name": "egnor_boards",
+      "name": "egnor",
       "maintainer": "Dan Egnor",
       "websiteURL": "https://github.com/egnor/gadget_play/",
       "email": "egnor@ofb.net",

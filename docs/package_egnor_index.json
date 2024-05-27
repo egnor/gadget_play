@@ -10,16 +10,16 @@
         {
           "name": "esp32",
           "architecture": "esp32",
-          "version": "0.3",
+          "version": "0.4",
           "category": "esp32",
           "help": { "online": "" },
           "boards": [
             { "name": "Palace Games GRIPPY" }
           ],
-          "url": "https://egnor.github.io/gadget_play/egnor_esp32_0.3.zip",
-          "archiveFileName": "egnor_esp32_0.3.zip",
-          "checksum": "SHA-256:bbb78871b77aae152334054d55d4eda2a30e33bed8aa23cb0b4c59de6ac2e9e3",
-          "size": 1738
+          "url": "https://egnor.github.io/gadget_play/egnor_esp32_0.4.zip",
+          "archiveFileName": "egnor_esp32_0.4.zip",
+          "checksum": "SHA-256:30fc391c7378daa4730a76218ba4fe87da6c9ec5cb6efffa434b4105649fa5ac",
+          "size": 1742
         }
       ]
     }

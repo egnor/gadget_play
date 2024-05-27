@@ -1,1 +1,2 @@
 name=Extra egnor-related boards
+runtime.platform.path={runtime.core.path}

@@ -10,7 +10,13 @@
 #include <esp_log.h>
 #endif
 
-#if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
+#if defined(ARDUINO_ESP32C3_DEV)
+constexpr std::array<int, 22> pins = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21,
+};
+#elif defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
 constexpr std::array<int, 23> pins = {
   26, 25, 34, 39, 36, 4, 5, 19, 21, 7, 8, 37,
   13, 12, 27, 33, 15, 32, 14, 20, 22,

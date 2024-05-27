@@ -1,0 +1,23 @@
+{
+  "packages": [
+    {
+      "name": "egnor_boards",
+      "maintainer": "Dan Egnor",
+      "websiteURL": "https://github.com/egnor/gadget_play/tree/main",
+      "email": "egnor@ofb.net",
+      "help": { "online": "" },
+      "platforms": [
+        {
+          "name": "esp32",
+          "architecture": "esp32",
+          "version": "0.1",
+          "category": "esp32",
+          "help": { "online": "" },
+          "url": "",
+          "archiveFileName": "egnor_esp32_boards_0.1.zip",
+          "checksum": "SHA-256:ea48d416681942beb8cd67eef15f4bee8954c75a517d1192029d9f32d15ff199",
+          "size": 1015
+        }
+      ]
+  ]
+}

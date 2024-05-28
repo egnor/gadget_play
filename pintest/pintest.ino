@@ -3,7 +3,7 @@
 #include <cctype>
 
 #include <Arduino.h>
-#include <NeoPixelBus.h>
+// #include <NeoPixelBus.h>
 #include <Wire.h>
 
 #if ARDUINO_ARCH_ESP32
@@ -24,10 +24,9 @@ constexpr std::array pins = {
 
 // General microcontrollers
 #elif defined(ARDUINO_ARCH_ESP32) && NUM_DIGITAL_PINS == 22  // ESP32-C3
-constexpr std::array<int, 22> pins = {
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-  20, 21,
+constexpr std::array<int, 13> pins = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21,
+  // Assume 18 and 19 are USB D- and D+
 };
 #elif defined(ARDUINO_ARCH_RP2040)
 constexpr std::array pins = {
@@ -60,8 +59,8 @@ static int pin_index = -1;
 static char pending_char = 0;
 static long next_millis = 0;
 
-using NeoPixelBusType = NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod>;
-static NeoPixelBusType* strip = nullptr;
+// using NeoPixelBusType = NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod>;
+// static NeoPixelBusType* strip = nullptr;
 static int strip_index = -1;
 static bool strip_spam = false;
 
@@ -395,6 +394,7 @@ void loop() {
           continue;
         }
 
+/*
         if (strip_index != pin_index) {
           if (strip != nullptr) {
             delete strip;
@@ -432,6 +432,7 @@ void loop() {
         }
 
         strip->Show();
+*/
         strip_spam = (ch < 'a');
         pin_modes[pin_index] = ch;
         break;
@@ -453,12 +454,14 @@ void loop() {
         continue;
       }
 
+/*
       if (strip_index == pin_index) {
         delete strip;
         strip = nullptr;
         strip_index = -1;
         strip_spam = false;
       }
+*/
 
       // Avoid glitching with unnecessary pinMode() calls
       auto const new_mode_ch = toupper(ch);
@@ -473,6 +476,7 @@ void loop() {
       break;
     }
 
+/*
     if (strip_spam && strip != nullptr && strip->CanShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
       uint8_t* const buf = strip->Pixels();
@@ -484,6 +488,7 @@ void loop() {
       strip->Dirty();
       strip->Show();
     }
+*/
 
     delay(10);
   }
@@ -494,12 +499,16 @@ void setup() {
   delay(500);
   while (!Serial) delay(1);
   Serial.print("\n\n### PIN TEST START 🔌 ###\n");
+  delay(500);
 #ifdef ESP_LOG_VERBOSE
   esp_log_level_set("*", ESP_LOG_VERBOSE);
 #endif
   Serial.flush();
 
   for (size_t i = 0; i < pins.size(); ++i) {
+    Serial.printf("📍 Pin %d => INPUT\n", pins[i]);
+    Serial.flush();
+    delay(100);
     pin_modes[i] = 'i';
     pinMode(pins[i], INPUT);
   }

@@ -1,2 +1,0 @@
-name=Extra egnor-related boards
-runtime.platform.path={build.core.path}

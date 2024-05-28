@@ -10,13 +10,8 @@
 #include <esp_log.h>
 #endif
 
-#if defined(ARDUINO_ESP32C3_DEV)
-constexpr std::array<int, 22> pins = {
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-  20, 21,
-};
-#elif defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
+// Specific boards
+#if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
 constexpr std::array<int, 23> pins = {
   26, 25, 34, 39, 36, 4, 5, 19, 21, 7, 8, 37,
   13, 12, 27, 33, 15, 32, 14, 20, 22,
@@ -26,6 +21,14 @@ constexpr std::array<int, 23> pins = {
 constexpr std::array pins = {
   39, 36, 15, 14, 12, 35, 4, 2, 17, 5, 33, 32,
 };
+
+// General microcontrollers
+#elif defined(ARDUINO_ARCH_ESP32) && NUM_DIGITAL_PINS == 22  // ESP32-C3
+constexpr std::array<int, 22> pins = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21,
+};
 #elif defined(ARDUINO_ARCH_RP2040)
 constexpr std::array pins = {
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -33,6 +36,7 @@ constexpr std::array pins = {
   20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
 };
 #else
+
 #error "Unsupported board"
 #endif
 

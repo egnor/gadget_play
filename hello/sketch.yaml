@@ -4,15 +4,15 @@ profiles:
     platforms:
       - platform: esp32:esp32 (2.0.17)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
-    libraries:
-      - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)
+
+  xiao:
+    fqbn: esp32:esp32:XIAO_ESP32C3:DebugLevel=verbose
+    platforms:
+      - platform: esp32:esp32 (2.0.14)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
 
   pg_grippy:
     fqbn: esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=minimal,FlashMode=dio,FlashFreq=80,FlashSize=2M,UploadSpeed=921600,DebugLevel=verbose,EraseFlash=all
     platforms:
       - platform: esp32:esp32 (3.0.0)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
-    libraries:
-      - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)

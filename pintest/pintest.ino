@@ -3,7 +3,7 @@
 #include <cctype>
 
 #include <Arduino.h>
-// #include <NeoPixelBus.h>
+#include <NeoPixelBus.h>
 #include <Wire.h>
 
 #if ARDUINO_ARCH_ESP32
@@ -59,8 +59,8 @@ static int pin_index = -1;
 static char pending_char = 0;
 static long next_millis = 0;
 
-// using NeoPixelBusType = NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod>;
-// static NeoPixelBusType* strip = nullptr;
+using NeoPixelBusType = NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod>;
+static NeoPixelBusType* strip = nullptr;
 static int strip_index = -1;
 static bool strip_spam = false;
 
@@ -394,7 +394,6 @@ void loop() {
           continue;
         }
 
-/*
         if (strip_index != pin_index) {
           if (strip != nullptr) {
             delete strip;
@@ -432,7 +431,6 @@ void loop() {
         }
 
         strip->Show();
-*/
         strip_spam = (ch < 'a');
         pin_modes[pin_index] = ch;
         break;
@@ -454,14 +452,12 @@ void loop() {
         continue;
       }
 
-/*
       if (strip_index == pin_index) {
         delete strip;
         strip = nullptr;
         strip_index = -1;
         strip_spam = false;
       }
-*/
 
       // Avoid glitching with unnecessary pinMode() calls
       auto const new_mode_ch = toupper(ch);
@@ -476,7 +472,6 @@ void loop() {
       break;
     }
 
-/*
     if (strip_spam && strip != nullptr && strip->CanShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
       uint8_t* const buf = strip->Pixels();
@@ -488,7 +483,6 @@ void loop() {
       strip->Dirty();
       strip->Show();
     }
-*/
 
     delay(10);
   }

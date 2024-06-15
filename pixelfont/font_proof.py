@@ -32,49 +32,77 @@ COMMON_LAYOUT = [
 
 SHEETS = {
   "4px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MDM1LnBuZw==/original/F9%2BCQK.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzU4LnBuZw==/original/OOqkG%2B.png",
     offset=(15 * 9 * 0, 48),
     spacing=(15, 15),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "4px_bold": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MTczNzQxLnBuZw==/original/TXKzn1.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzczLnBuZw==/original/JLduHf.png",
     offset=(15 * 9 * 0, 48),
     spacing=(18, 15),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "5px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU4Njc5LnBuZw==/original/q%2BWiPl.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzU5LnBuZw==/original/TG0uXI.png",
     offset=(18 * 9 * 5, 57),
     spacing=(18, 18),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
+  "5px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc1LnBuZw==/original/wdTARf.png",
+    offset=(18 * 9 * 2, 57),
+    spacing=(18, 18),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
   "7px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzM1LnBuZw==/original/%2BAHWNZ.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYwLnBuZw==/original/LuMsmB.png",
     offset=(24 * (17 + 9 * 5), 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
+  "7px_bold_half": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc0LnBuZw==/original/%2FgQ%2Bus.png",
+    offset=(24 * 0, 51),
+    spacing=(24, 24),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "7px_bold_full": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc0LnBuZw==/original/%2FgQ%2Bus.png",
+    offset=(24 * 9 * 2, 51),
+    spacing=(24, 24),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
   "9px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzI2LnBuZw==/original/tl3lmr.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYxLnBuZw==/original/VQI4Tm.png",
     offset=(30 * 9 * 6, 60),
     spacing=(30, 30),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
+  "9px_bold_half": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDYyNDUyLnBuZw==/original/%2FT4Nuw.png",
+    offset=(30 * 9 * 0 + 6, 60),
+    spacing=(30, 30),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
   "11px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MDU5MzE5LnBuZw==/original/QKWump.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYyLnBuZw==/original/1qbnY7.png",
     offset=(36 * (9 * 4 + 15), 75),
     spacing=(36, 36),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "13px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MTU2ODEyLnBuZw==/original/JU1J7B.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYzLnBuZw==/original/CTFRuZ.png",
     offset=(42 * 9 * 5, 88),
     spacing=(42, 42),
     unzoom=3,
@@ -225,7 +253,7 @@ def load_fonts():
 
 def text_block(font, width, text):
     en_w = font.glyphs["n"].shape[1]
-    gap_w = (en_w // 6) + 1
+    gap_w = 1
 
     max_h = max(g.shape[0] for g in font.glyphs.values())
     gap_h = 1

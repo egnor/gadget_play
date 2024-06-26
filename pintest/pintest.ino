@@ -12,10 +12,10 @@
 
 // Specific boards
 #if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
-constexpr std::array<int, 23> pins = {
+constexpr std::array<int, 24> pins = {
   26, 25, 34, 39, 36, 4, 5, 19, 21, 7, 8, 37,
   13, 12, 27, 33, 15, 32, 14, 20, 22,
-  PIN_NEOPIXEL, NEOPIXEL_I2C_POWER,
+  PIN_NEOPIXEL, NEOPIXEL_I2C_POWER, BUTTON,
 };
 #elif defined(ARDUINO_WT32_ETH01)
 constexpr std::array pins = {

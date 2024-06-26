@@ -32,15 +32,15 @@ COMMON_LAYOUT = [
 
 SHEETS = {
   "4px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzU4LnBuZw==/original/OOqkG%2B.png",
-    offset=(15 * 9 * 0, 48),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDUyNzU1LnBuZw==/original/%2BpZ1go.png",
+    offset=(15 * 10 * 1, 48),
     spacing=(15, 15),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
   "4px_bold": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzczLnBuZw==/original/JLduHf.png",
-    offset=(15 * 9 * 0, 48),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDUyNzYzLnBuZw==/original/oDssP8.png",
+    offset=(18 * 9 * 5, 48),
     spacing=(18, 15),
     unzoom=3,
     layout=COMMON_LAYOUT,
@@ -60,36 +60,51 @@ SHEETS = {
     layout=COMMON_LAYOUT,
   ),
   "7px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYwLnBuZw==/original/LuMsmB.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDUyNzYwLnBuZw==/original/NR%2F7Ic.png",
     offset=(24 * (17 + 9 * 5), 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "7px_bold_half": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc0LnBuZw==/original/%2FgQ%2Bus.png",
+  "7px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjQ0NjA2LnBuZw==/original/QUHucb.png",
     offset=(24 * 0, 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "7px_bold_full": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc0LnBuZw==/original/%2FgQ%2Bus.png",
+  "7px_black_wide": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjQ0NjA2LnBuZw==/original/QUHucb.png",
     offset=(24 * 9 * 2, 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
+  "7px_black": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjQ0NjA2LnBuZw==/original/QUHucb.png",
+    offset=(24 * 9 * 3, 51),
+    spacing=(24, 24),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+    inherit="7px_black_wide",
+  ),
   "9px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYxLnBuZw==/original/VQI4Tm.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjA1MDkzLnBuZw==/original/Z4FtMt.png",
     offset=(30 * 9 * 6, 60),
     spacing=(30, 30),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "9px_bold_half": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDYyNDUyLnBuZw==/original/%2FT4Nuw.png",
-    offset=(30 * 9 * 0 + 6, 60),
+  "9px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjQ0NjA3LnBuZw==/original/xZOvIF.png",
+    offset=(6 + 30 * (8 + 10 + 10), 60),
+    spacing=(30, 30),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "9px_black": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NjQ0NjA3LnBuZw==/original/xZOvIF.png",
+    offset=(6 + 30 * (8 + 10 + 10 + 8 + 8 + 1), 60),
     spacing=(30, 30),
     unzoom=3,
     layout=COMMON_LAYOUT,

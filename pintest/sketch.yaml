@@ -16,3 +16,12 @@ profiles:
     libraries:
       - EspSoftwareSerial (8.1.0)
       - NeoPixelBus by Makuna (2.8.0)
+
+  qualia:
+    fqbn: esp32:esp32:adafruit_qualia_s3_rgb666
+    platforms:
+      - platform: esp32:esp32 (3.0.0)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - EspSoftwareSerial (8.1.0)
+      - NeoPixelBus by Makuna (2.8.0)

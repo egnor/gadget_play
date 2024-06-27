@@ -21,6 +21,11 @@ constexpr std::array<int, 24> pins = {
 constexpr std::array pins = {
   39, 36, 15, 14, 12, 35, 4, 2, 17, 5, 33, 32,
 };
+#elif defined(ARDUINO_QUALIA_S3_RGB666)
+constexpr std::array pins = {
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21,
+  38, 39, 40, 41, 42, 45, 46, 47, 48,
+};
 
 // General microcontrollers
 #elif defined(ARDUINO_ARCH_ESP32) && NUM_DIGITAL_PINS == 22  // ESP32-C3

@@ -109,8 +109,15 @@ SHEETS = {
     layout=COMMON_LAYOUT,
   ),
   "11px_bold": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NzM0MTAzLnBuZw==/original/l%2FHpVL.png",
-    offset=(36 * (9 * 0), 75),
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODIzMTM0LnBuZw==/original/gy%2Fifd.png",
+    offset=(36 * (9 * 3), 75),
+    spacing=(36, 36),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "11px_black": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODIzMTM0LnBuZw==/original/gy%2Fifd.png",
+    offset=(36 * (9 * 5), 75),
     spacing=(36, 36),
     unzoom=3,
     layout=COMMON_LAYOUT,

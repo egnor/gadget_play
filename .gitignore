@@ -1,6 +1,7 @@
 # Editor and general
 .*.swp
 .direnv/
+*.tmp
 build/
 
 # Arduino

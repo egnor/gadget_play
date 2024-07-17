@@ -2,7 +2,7 @@
 arduino-cli = "https://github.com/egnor/asdf-arduino-cli.git"
 
 [tools]
-arduino-cli = {version = "0.35.3"}
+arduino-cli = {version = "1.0.0"}
 python = {version = "3.11", virtualenv = "build/python_venv"}
 
 [settings]

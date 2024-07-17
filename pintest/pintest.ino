@@ -28,16 +28,18 @@ constexpr std::array pins = {
 };
 
 // General microcontrollers
-#elif defined(ARDUINO_ARCH_ESP32) && NUM_DIGITAL_PINS == 22  // ESP32-C3
+#elif CONFIG_IDF_TARGET_ESP32C3
 constexpr std::array<int, 13> pins = {
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21,
   // Assume 18 and 19 are USB D- and D+
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21,
 };
-#elif defined(ARDUINO_ARCH_RP2040)
+#elif CONFIG_IDF_TARGET_ESP32S3
 constexpr std::array pins = {
-  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+  // 19 and 20 are USB D- and D+
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18,
+      21,             35, 36, 37, 38, 39,
+  40, 41, 42, 43, 44, 45, 46, 47, 48,
 };
 #else
 
@@ -393,6 +395,7 @@ void loop() {
         case 'Z': rgb = 0x000000; break;
       }
 
+#if 1 
       if (rgb >= 0) {
         if (pin_index < 0) {
           Serial.printf("*** [%c]: no pin selected for LED strip\n\n", ch);
@@ -440,6 +443,7 @@ void loop() {
         pin_modes[pin_index] = ch;
         break;
       }
+#endif
 
       int new_mode;
       switch (toupper(ch)) {
@@ -457,12 +461,14 @@ void loop() {
         continue;
       }
 
+#if 0
       if (strip_index == pin_index) {
         delete strip;
         strip = nullptr;
         strip_index = -1;
         strip_spam = false;
       }
+#endif
 
       // Avoid glitching with unnecessary pinMode() calls
       auto const new_mode_ch = toupper(ch);
@@ -477,6 +483,7 @@ void loop() {
       break;
     }
 
+#if 0
     if (strip_spam && strip != nullptr && strip->CanShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
       uint8_t* const buf = strip->Pixels();
@@ -488,6 +495,7 @@ void loop() {
       strip->Dirty();
       strip->Show();
     }
+#endif
 
     delay(10);
   }

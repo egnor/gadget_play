@@ -2,8 +2,8 @@
 arduino-cli = "https://github.com/egnor/asdf-arduino-cli.git"
 
 [tools]
-arduino-cli = {version = "1.0.0"}
-python = {version = "3.11", virtualenv = "build/python_venv"}
+arduino-cli = {version = "1.0.2"}
+python = {version = "3.11", virtualenv = "build.tmp/python_venv"}
 
 [settings]
 experimental = true
@@ -12,5 +12,5 @@ python_venv_auto_create = true
 
 [env]
 ARDUINO_BOARD_MANAGER_ADDITIONAL_URLS = "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_dev_index.json"
-ARDUINO_DIRECTORIES_DATA = "{{config_root}}/build/arduino"
+ARDUINO_DIRECTORIES_DATA = "{{config_root}}/build.tmp/arduino"
 ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL = "true"

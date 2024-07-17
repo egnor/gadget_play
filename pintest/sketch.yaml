@@ -6,7 +6,7 @@ profiles:
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)
+      - Adafruit NeoPixel (1.12.3)
 
   pg_grippy:
     fqbn: esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=minimal,FlashMode=dio,FlashFreq=80,FlashSize=2M,UploadSpeed=921600,DebugLevel=verbose,EraseFlash=all
@@ -15,7 +15,7 @@ profiles:
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)
+      - Adafruit NeoPixel (1.12.3)
 
   qualia:
     fqbn: esp32:esp32:adafruit_qualia_s3_rgb666:DebugLevel=verbose,USBMode=hwcdc,CDCOnBoot=cdc
@@ -24,7 +24,7 @@ profiles:
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)
+      - Adafruit NeoPixel (1.12.3)
 
   esp32s3:
     fqbn: esp32:esp32:esp32s3:DebugLevel=verbose,USBMode=hwcdc,CDCOnBoot=cdc
@@ -33,4 +33,4 @@ profiles:
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
-      - NeoPixelBus by Makuna (2.8.0)
+      - Adafruit NeoPixel (1.12.3)

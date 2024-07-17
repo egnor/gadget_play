@@ -2,8 +2,8 @@
 #include <array>
 #include <cctype>
 
+#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
-#include <NeoPixelBus.h>
 #include <Wire.h>
 
 #if ARDUINO_ARCH_ESP32
@@ -61,13 +61,12 @@ SoftwareSerial* make_software_serial(int tx, int rx, int baud) {
 }
 #endif
 
-static std::array<char, pins.size()> pin_modes;
+static std::array<char, pins.size()> pin_chars;
 static int pin_index = -1;
 static char pending_char = 0;
 static long next_millis = 0;
 
-using NeoPixelBusType = NeoPixelBus<NeoGrbFeature, NeoWs2812xMethod>;
-static NeoPixelBusType* strip = nullptr;
+static Adafruit_NeoPixel* strip = nullptr;
 static int strip_index = -1;
 static bool strip_spam = false;
 
@@ -193,7 +192,7 @@ void loop() {
   for (size_t i = 0; i < pins.size(); ++i) {
     auto const read = digitalRead(pins[i]);
     char const* emoji;
-    switch (toupper(pin_modes[i])) {
+    switch (toupper(pin_chars[i])) {
       case 'I': emoji = read ? "🔼" : "⬇️"; break;
       case 'U': emoji = read ? "🎈" : "⤵️"; break;
       case 'D': emoji = read ? "⏫" : "💧"; break;
@@ -214,7 +213,7 @@ void loop() {
 
     char pin_name[4];
     sprintf(pin_name, "%d", pins[i]);
-    sprintf(pin_text[i], "%s%c%d", pin_name, pin_modes[i], read);
+    sprintf(pin_text[i], "%s%c%d", pin_name, pin_chars[i], read);
 
     if (i > 0) Serial.print(" ");
     if (pin_index == i) Serial.print("[");
@@ -342,6 +341,12 @@ void loop() {
             } else {
               Serial.printf("<<< ctrl-I >>> I2C scan\n");
               run_i2c_scan();
+              for (size_t i = 0; i < pins.size(); ++i) {
+                if (pins[i] == sda_pin || pins[i] == scl_pin) {
+                  pin_chars[i] = 'i';
+                  pinMode(pins[i], INPUT);
+                }
+              }
               next_millis = millis();
             }
             break;
@@ -405,42 +410,42 @@ void loop() {
         if (strip_index != pin_index) {
           if (strip != nullptr) {
             delete strip;
-            pin_modes[strip_index] = 'i';
+            pin_chars[strip_index] = 'i';
             pinMode(pins[strip_index], INPUT);
           }
           strip_index = pin_index;
-          strip = new NeoPixelBusType(768, pins[pin_index]);
-          strip->Begin();
+          strip = new Adafruit_NeoPixel(768, pins[pin_index], NEO_GRB + NEO_KHZ800);
+          strip->begin();
         }
 
         if (ch == 'a' || ch == 'A') {
-          int const pixels = strip->PixelCount();
+          int const pixels = strip->numPixels();
           for (int p = 0; p < pixels; ++p) {
             int const c = (p * 10) % 768;
             if (c < 256) {
-              strip->SetPixelColor(p, RgbColor(c, 255 - c, 0));
+              strip->setPixelColor(p, c, 255 - c, 0);
             } else if (c < 512) {
-              strip->SetPixelColor(p, RgbColor(0, c - 256, 511 - c));
+              strip->setPixelColor(p, 0, c - 256, 511 - c);
             } else {
-              strip->SetPixelColor(p, RgbColor(767 - c, 0, c - 512));
+              strip->setPixelColor(p, 767 - c, 0, c - 512);
             }
           }
         } else if (ch == 'z' || ch == 'Z') {
-          int const pixels = strip->PixelCount();
+          int const pixels = strip->numPixels();
           for (int p = 0; p < pixels; ++p) {
             if (p % 32 < 16) {
-              strip->SetPixelColor(p, RgbColor(255, 255, 255));
+              strip->setPixelColor(p, 255, 255, 255);
             } else {
-              strip->SetPixelColor(p, RgbColor(0, 0, 0));
+              strip->setPixelColor(p, 0, 0, 0);
             }
           }
         } else {
-          strip->ClearTo(HtmlColor(rgb));
+          strip->fill(rgb);
         }
 
-        strip->Show();
+        strip->show();
         strip_spam = (ch < 'a');
-        pin_modes[pin_index] = ch;
+        pin_chars[pin_index] = ch;
         break;
       }
 #endif
@@ -472,8 +477,8 @@ void loop() {
 
       // Avoid glitching with unnecessary pinMode() calls
       auto const new_mode_ch = toupper(ch);
-      if (pin_modes[pin_index] != new_mode_ch) {
-        pin_modes[pin_index] = new_mode_ch;
+      if (pin_chars[pin_index] != new_mode_ch) {
+        pin_chars[pin_index] = new_mode_ch;
         pinMode(pins[pin_index], new_mode);
       }
       if (new_mode == OUTPUT) {
@@ -486,14 +491,13 @@ void loop() {
 #if 0
     if (strip_spam && strip != nullptr && strip->CanShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
-      uint8_t* const buf = strip->Pixels();
-      int const buf_size = strip->PixelCount() * 3;
+      uint8_t* const buf = strip->getPixels();
+      int const buf_size = strip->numPixels() * 3;
       uint8_t temp[3];
       memcpy(temp, buf + buf_size - 3, 3);
       memmove(buf + 3, buf, buf_size - 3);
       memcpy(buf, temp, 3);
-      strip->Dirty();
-      strip->Show();
+      strip->show();
     }
 #endif
 
@@ -515,8 +519,8 @@ void setup() {
   for (size_t i = 0; i < pins.size(); ++i) {
     Serial.printf("📍 Pin %d => INPUT\n", pins[i]);
     Serial.flush();
-    delay(100);
-    pin_modes[i] = 'i';
+    delay(20);
+    pin_chars[i] = 'i';
     pinMode(pins[i], INPUT);
   }
 

@@ -38,7 +38,7 @@ SHEETS = {
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "4px_bold": FontSheet(
+  "4px_halfbold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2NDUyNzYzLnBuZw==/original/oDssP8.png",
     offset=(18 * 9 * 5, 48),
     spacing=(18, 15),
@@ -52,7 +52,7 @@ SHEETS = {
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "5px_bold": FontSheet(
+  "5px_halfbold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1Mzc1LnBuZw==/original/wdTARf.png",
     offset=(18 * 9 * 2, 57),
     spacing=(18, 18),
@@ -66,14 +66,14 @@ SHEETS = {
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "7px_bold": FontSheet(
+  "7px_halfbold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2Njk3NDk3LnBuZw==/original/xO1ZNM.png",
     offset=(24 * 0, 51),
     spacing=(24, 24),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "7px_black": FontSheet(
+  "7px_bold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2Njk3NDk3LnBuZw==/original/xO1ZNM.png",
     offset=(24 * (9 * 6 + 11), 51),
     spacing=(24, 24),
@@ -87,14 +87,14 @@ SHEETS = {
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "9px_bold": FontSheet(
+  "9px_halfbold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2Njk3NDk4LnBuZw==/original/Wg16Uy.png",
     offset=(6 + 30 * (8 + 10 + 10), 60),
     spacing=(30, 30),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "9px_black": FontSheet(
+  "9px_bold": FontSheet(
     url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2Njk3NDk4LnBuZw==/original/Wg16Uy.png",
     offset=(6 + 30 * (8 + 10 + 10 + 8 + 8 + 1), 60),
     spacing=(30, 30),
@@ -102,21 +102,21 @@ SHEETS = {
     layout=COMMON_LAYOUT,
   ),
   "11px": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2MzA1MzYyLnBuZw==/original/1qbnY7.png",
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODQwMTc1LnBuZw==/original/JlK1tB.png",
     offset=(36 * (9 * 4 + 15), 75),
     spacing=(36, 36),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "11px_bold": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODIzMTM0LnBuZw==/original/gy%2Fifd.png",
+  "11px_halfbold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODQwMTY1LnBuZw==/original/x1ipJC.png",
     offset=(36 * (9 * 3), 75),
     spacing=(36, 36),
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
-  "11px_black": FontSheet(
-    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODIzMTM0LnBuZw==/original/gy%2Fifd.png",
+  "11px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODQwMTY1LnBuZw==/original/x1ipJC.png",
     offset=(36 * (9 * 5), 75),
     spacing=(36, 36),
     unzoom=3,
@@ -129,6 +129,21 @@ SHEETS = {
     unzoom=3,
     layout=COMMON_LAYOUT,
   ),
+  "13px_halfbold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODk2NjQ4LnBuZw==/original/O5zCFB.png",
+    offset=(42 * 9 * 0, 88),
+    spacing=(42, 42),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+  "13px_bold": FontSheet(
+    url=f"{ITCH}/aW1hZ2UvODU2NjU5LzE2ODk2NjQ4LnBuZw==/original/O5zCFB.png",
+    offset=(42 * 9 * 2, 88),
+    spacing=(42, 42),
+    unzoom=3,
+    layout=COMMON_LAYOUT,
+  ),
+
 }
 
 HOEFLER_PROOF = """

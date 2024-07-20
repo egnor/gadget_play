@@ -11,7 +11,7 @@ profiles:
   pg_grippy:
     fqbn: esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=minimal,FlashMode=dio,FlashFreq=80,FlashSize=2M,UploadSpeed=921600,DebugLevel=verbose,EraseFlash=all
     platforms:
-      - platform: esp32:esp32 (3.0.2)
+      - platform: esp32:esp32 (3.0.3)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
@@ -20,7 +20,16 @@ profiles:
   qualia:
     fqbn: esp32:esp32:adafruit_qualia_s3_rgb666:DebugLevel=verbose,USBMode=hwcdc,CDCOnBoot=cdc
     platforms:
-      - platform: esp32:esp32 (3.0.2)
+      - platform: esp32:esp32 (3.0.3)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - EspSoftwareSerial (8.1.0)
+      - Adafruit NeoPixel (1.12.3)
+
+  esp32s2:
+    fqbn: esp32:esp32:esp32s2:CDCOnBoot=cdc,UploadMode=cdc,DebugLevel=verbose
+    platforms:
+      - platform: esp32:esp32 (2.0.17)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)
@@ -29,7 +38,7 @@ profiles:
   esp32s3:
     fqbn: esp32:esp32:esp32s3:DebugLevel=verbose,USBMode=hwcdc,CDCOnBoot=cdc
     platforms:
-      - platform: esp32:esp32 (3.0.2)
+      - platform: esp32:esp32 (3.0.3)
         platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
     libraries:
       - EspSoftwareSerial (8.1.0)

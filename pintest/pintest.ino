@@ -33,6 +33,16 @@ constexpr std::array<int, 13> pins = {
   // Assume 18 and 19 are USB D- and D+
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21,
 };
+#elif CONFIG_IDF_TARGET_ESP32S2
+constexpr std::array<int, 34> pins = {
+  // 19 and 20 are USB D- and D+
+  // 26 is used by internal PSRAM
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18,
+      21,
+              33, 34, 35, 36, 37, 38, 39,
+  40, 41, 42, 43, 44, 45, 46,
+};
 #elif CONFIG_IDF_TARGET_ESP32S3
 constexpr std::array pins = {
   // 19 and 20 are USB D- and D+
@@ -400,25 +410,28 @@ void loop() {
         case 'Z': rgb = 0x000000; break;
       }
 
-#if 1 
       if (rgb >= 0) {
         if (pin_index < 0) {
           Serial.printf("*** [%c]: no pin selected for LED strip\n\n", ch);
           continue;
         }
 
-        if (strip_index != pin_index) {
+        if (strip_index != pin_index || strip == nullptr) {
           if (strip != nullptr) {
+            Serial.printf("=== Stopping pin %d LED driver\n", pins[strip_index]);
             delete strip;
             pin_chars[strip_index] = 'i';
             pinMode(pins[strip_index], INPUT);
           }
+          Serial.printf("=== Pin %d LED driver starting\n", pins[pin_index]);
           strip_index = pin_index;
           strip = new Adafruit_NeoPixel(768, pins[pin_index], NEO_GRB + NEO_KHZ800);
           strip->begin();
         }
 
         if (ch == 'a' || ch == 'A') {
+          Serial.printf("<<< A >>> pin %d: LED rainbow\n", pins[pin_index]);
+
           int const pixels = strip->numPixels();
           for (int p = 0; p < pixels; ++p) {
             int const c = (p * 10) % 768;
@@ -431,6 +444,8 @@ void loop() {
             }
           }
         } else if (ch == 'z' || ch == 'Z') {
+          Serial.printf("<<< Z >>> pin %d: LED zebra\n", pins[pin_index]);
+
           int const pixels = strip->numPixels();
           for (int p = 0; p < pixels; ++p) {
             if (p % 32 < 16) {
@@ -440,15 +455,17 @@ void loop() {
             }
           }
         } else {
+          Serial.printf(
+              "<<< %c >>> pin %d: LED #%06x\n", ch, pins[pin_index], rgb);
           strip->fill(rgb);
         }
 
+        Serial.flush();
         strip->show();
         strip_spam = (ch < 'a');
         pin_chars[pin_index] = ch;
         break;
       }
-#endif
 
       int new_mode;
       switch (toupper(ch)) {
@@ -466,14 +483,13 @@ void loop() {
         continue;
       }
 
-#if 0
       if (strip_index == pin_index) {
+        Serial.printf("=== Pin %d LED driver stopping\n", pins[strip_index]);
         delete strip;
         strip = nullptr;
         strip_index = -1;
         strip_spam = false;
       }
-#endif
 
       // Avoid glitching with unnecessary pinMode() calls
       auto const new_mode_ch = toupper(ch);
@@ -488,8 +504,7 @@ void loop() {
       break;
     }
 
-#if 0
-    if (strip_spam && strip != nullptr && strip->CanShow()) {
+    if (strip_spam && strip != nullptr && strip->canShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
       uint8_t* const buf = strip->getPixels();
       int const buf_size = strip->numPixels() * 3;
@@ -499,7 +514,6 @@ void loop() {
       memcpy(buf, temp, 3);
       strip->show();
     }
-#endif
 
     delay(10);
   }

@@ -1,0 +1,8 @@
+default_profile: radio
+
+profiles:
+  radio:
+    fqbn: esp32:esp32:esp32s2:CDCOnBoot=cdc,UploadMode=cdc,PSRAM=enabled,DebugLevel=verbose
+    platforms:
+      - platform: esp32:esp32 (3.0.4)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json

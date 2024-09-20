@@ -221,6 +221,7 @@ void loop() {
       case 'M': emoji = "🟪"; break;
       case 'Y': emoji = "🟨"; break;
       case 'K': emoji = "⚫"; break;
+      case 'O': emoji = "🟠"; break;
       case 'A': emoji = "🌈"; break;
       case 'Z': emoji = "🦓"; break;
       default: emoji = "???"; break;
@@ -411,6 +412,7 @@ void loop() {
         case 'M': rgb = 0xFF00FF; break;
         case 'Y': rgb = 0xFFFF00; break;
         case 'K': rgb = 0x000000; break;
+        case 'O': rgb = 0xFF4400; break;
         case 'A': rgb = 0x000000; break;
         case 'Z': rgb = 0x000000; break;
       }

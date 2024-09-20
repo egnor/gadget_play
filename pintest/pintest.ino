@@ -12,16 +12,21 @@
 
 // Specific boards
 #if defined(ARDUINO_ADAFRUIT_FEATHER_ESP32_V2)
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = RX, tx_pin = TX;
 constexpr std::array<int, 24> pins = {
   26, 25, 34, 39, 36, 4, 5, 19, 21, 7, 8, 37,
   13, 12, 27, 33, 15, 32, 14, 20, 22,
   PIN_NEOPIXEL, NEOPIXEL_I2C_POWER, BUTTON,
 };
+
 #elif defined(ARDUINO_WT32_ETH01)
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array pins = {
   39, 36, 15, 14, 12, 35, 4, 2, 17, 5, 33, 32,
 };
+
 #elif defined(ARDUINO_QUALIA_S3_RGB666)
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array pins = {
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21,
   38, 39, 40, 41, 42, 45, 46, 47, 48,
@@ -29,11 +34,14 @@ constexpr std::array pins = {
 
 // General microcontrollers
 #elif CONFIG_IDF_TARGET_ESP32C3
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array<int, 13> pins = {
   // Assume 18 and 19 are USB D- and D+
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21,
 };
+
 #elif CONFIG_IDF_TARGET_ESP32S2
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array<int, 34> pins = {
   // 19 and 20 are USB D- and D+
   // 26 is used by internal PSRAM
@@ -43,6 +51,8 @@ constexpr std::array<int, 34> pins = {
               33, 34, 35, 36, 37, 38, 39,
   40, 41, 42, 43, 44, 45, 46,
 };
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
+
 #elif CONFIG_IDF_TARGET_ESP32S3
 constexpr std::array pins = {
   // 19 and 20 are USB D- and D+
@@ -76,15 +86,9 @@ static int pin_index = -1;
 static char pending_char = 0;
 static long next_millis = 0;
 
-static Adafruit_NeoPixel* strip = nullptr;
-static int strip_index = -1;
-static bool strip_spam = false;
-
-static int sda_pin = SDA;
-static int scl_pin = SCL;
-
-static int rx_pin = -1;
-static int tx_pin = -1;
+static Adafruit_NeoPixel* leds = nullptr;
+static bool led_spam = false;
+static int led_pin = -1;
 
 void run_i2c_scan() {
   Wire.begin();
@@ -125,7 +129,8 @@ void run_uart_terminal() {
       last_dat = dat;
     }
 
-    int const key_n = std::min(Serial.available(), port->availableForWrite());
+    // SoftwareSerial.availableForWrite() doesn't work; just let it block
+    int const key_n = Serial.available();
     for (int i = 0; i < key_n; ++i) {
       auto const key = Serial.read();
       if (key == 'U' - 0x40) {
@@ -305,8 +310,8 @@ void loop() {
            "  ctrl-C: use selected pin for I2C SCL (⏱️)\n"
            "  ctrl-D: use selected pin for I2C SDA (📊)\n"
            "  ctrl-I: run I2C scanner\n"
-           "  ctrl-R: use selected pin for UART RX (⬅️)\n"
-           "  ctrl-X: use selected pin for UART TX (➡️)\n"
+           "  ctrl-R: use selected pin for UART RX (🗨️)\n"
+           "  ctrl-X: use selected pin for UART TX (💬)\n"
            "  ctrl-U: run UART terminal\n"
            "\n"
         );
@@ -416,53 +421,58 @@ void loop() {
           continue;
         }
 
-        if (strip_index != pin_index || strip == nullptr) {
-          if (strip != nullptr) {
-            Serial.printf("=== Stopping pin %d LED driver\n", pins[strip_index]);
-            delete strip;
-            pin_chars[strip_index] = 'i';
-            pinMode(pins[strip_index], INPUT);
+        if (led_pin != pins[pin_index] || leds == nullptr) {
+          if (leds != nullptr) {
+            Serial.printf("=== p%d LED strip driver stopping\n", led_pin);
+            delete leds;
+            for (size_t i = 0; i < pins.size(); ++i) {
+              if (pins[i] == led_pin) {
+                pin_chars[i] = 'i';
+                pinMode(pins[i], INPUT);
+              }
+            }
           }
-          Serial.printf("=== Pin %d LED driver starting\n", pins[pin_index]);
-          strip_index = pin_index;
-          strip = new Adafruit_NeoPixel(768, pins[pin_index], NEO_GRB + NEO_KHZ800);
-          strip->begin();
+
+          Serial.printf("=== p%d LED strip driver starting\n", pins[pin_index]);
+          led_pin = pins[pin_index];;
+          leds = new Adafruit_NeoPixel(64, led_pin, NEO_GRB + NEO_KHZ800);
+          leds->begin();
         }
 
         if (ch == 'a' || ch == 'A') {
-          Serial.printf("<<< A >>> pin %d: LED rainbow\n", pins[pin_index]);
+          Serial.printf("<<< A >>> p%d: LED rainbow\n", pins[pin_index]);
 
-          int const pixels = strip->numPixels();
+          int const pixels = leds->numPixels();
           for (int p = 0; p < pixels; ++p) {
             int const c = (p * 10) % 768;
             if (c < 256) {
-              strip->setPixelColor(p, c, 255 - c, 0);
+              leds->setPixelColor(p, c, 255 - c, 0);
             } else if (c < 512) {
-              strip->setPixelColor(p, 0, c - 256, 511 - c);
+              leds->setPixelColor(p, 0, c - 256, 511 - c);
             } else {
-              strip->setPixelColor(p, 767 - c, 0, c - 512);
+              leds->setPixelColor(p, 767 - c, 0, c - 512);
             }
           }
         } else if (ch == 'z' || ch == 'Z') {
-          Serial.printf("<<< Z >>> pin %d: LED zebra\n", pins[pin_index]);
+          Serial.printf("<<< Z >>> p%d: LED zebra\n", pins[pin_index]);
 
-          int const pixels = strip->numPixels();
+          int const pixels = leds->numPixels();
           for (int p = 0; p < pixels; ++p) {
             if (p % 32 < 16) {
-              strip->setPixelColor(p, 255, 255, 255);
+              leds->setPixelColor(p, 255, 255, 255);
             } else {
-              strip->setPixelColor(p, 0, 0, 0);
+              leds->setPixelColor(p, 0, 0, 0);
             }
           }
         } else {
           Serial.printf(
-              "<<< %c >>> pin %d: LED #%06x\n", ch, pins[pin_index], rgb);
-          strip->fill(rgb);
+              "<<< %c >>> p%d: LED #%06x\n", ch, pins[pin_index], rgb);
+          leds->fill(rgb);
         }
 
         Serial.flush();
-        strip->show();
-        strip_spam = (ch < 'a');
+        leds->show();
+        led_spam = (ch < 'a');
         pin_chars[pin_index] = ch;
         break;
       }
@@ -483,12 +493,10 @@ void loop() {
         continue;
       }
 
-      if (strip_index == pin_index) {
-        Serial.printf("=== Pin %d LED driver stopping\n", pins[strip_index]);
-        delete strip;
-        strip = nullptr;
-        strip_index = -1;
-        strip_spam = false;
+      if (led_pin == pins[pin_index]) {
+        Serial.printf("=== p%d LED strip driver stopping\n", led_pin);
+        delete leds;
+        leds = nullptr;
       }
 
       // Avoid glitching with unnecessary pinMode() calls
@@ -504,15 +512,15 @@ void loop() {
       break;
     }
 
-    if (strip_spam && strip != nullptr && strip->canShow()) {
+    if (led_spam && leds != nullptr && leds->canShow()) {
       // Always rotate the LED buffer (though it only matters for the rainbow)
-      uint8_t* const buf = strip->getPixels();
-      int const buf_size = strip->numPixels() * 3;
+      uint8_t* const buf = leds->getPixels();
+      int const buf_size = leds->numPixels() * 3;
       uint8_t temp[3];
       memcpy(temp, buf + buf_size - 3, 3);
       memmove(buf + 3, buf, buf_size - 3);
       memcpy(buf, temp, 3);
-      strip->show();
+      leds->show();
     }
 
     delay(10);
@@ -531,7 +539,7 @@ void setup() {
   Serial.flush();
 
   for (size_t i = 0; i < pins.size(); ++i) {
-    Serial.printf("📍 Pin %d => INPUT\n", pins[i]);
+    Serial.printf("📍 p%d => INPUT\n", pins[i]);
     Serial.flush();
     delay(20);
     pin_chars[i] = 'i';

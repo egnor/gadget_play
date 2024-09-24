@@ -19,12 +19,6 @@ constexpr std::array<int, 24> pins = {
   PIN_NEOPIXEL, NEOPIXEL_I2C_POWER, BUTTON,
 };
 
-#elif defined(ARDUINO_WT32_ETH01)
-static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
-constexpr std::array pins = {
-  39, 36, 15, 14, 12, 35, 4, 2, 17, 5, 33, 32,
-};
-
 #elif defined(ARDUINO_QUALIA_S3_RGB666)
 static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array pins = {
@@ -32,7 +26,22 @@ constexpr std::array pins = {
   38, 39, 40, 41, 42, 45, 46, 47, 48,
 };
 
+#elif defined(ARDUINO_WT32_ETH01)
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
+constexpr std::array pins = {
+  39, 36, 15, 14, 12, 35, 4, 2, 17, 5, 33, 32,
+};
+
 // General microcontrollers
+#elif CONFIG_IDF_TARGET_ESP32
+static int sda_pin = -1, scl_pin = -1, rx_pin = -1, tx_pin = -1;
+constexpr std::array pins = {
+  // pins 1 and 3 are UART0 TX and RX; don't step on the console
+  // pins 6-11 are internal flash; using them will crash
+  0, 2, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19,
+  21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39
+};
+
 #elif CONFIG_IDF_TARGET_ESP32C3
 static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array<int, 13> pins = {
@@ -92,6 +101,12 @@ static int led_pin = -1;
 
 void run_i2c_scan() {
   Wire.begin();
+
+#if defined(ARDUINO_ARCH_ESP32)
+  // turn on internal pullups in case it helps!
+  gpio_set_pull_mode((gpio_num_t) sda_pin, GPIO_PULLUP_ONLY);
+  gpio_set_pull_mode((gpio_num_t) scl_pin, GPIO_PULLUP_ONLY);
+#endif
 
   int found = 0;
   for (int address = 1; address < 127; ++address) {
@@ -205,7 +220,12 @@ void loop() {
   std::array<char[8], pins.size()> pin_text = {};
 
   for (size_t i = 0; i < pins.size(); ++i) {
+#if defined(ARDUINO_ARCH_ESP32)
+    // workaround for https://github.com/espressif/arduino-esp32/issues/10370
+    auto const read = gpio_get_level((gpio_num_t) pins[i]);
+#else
     auto const read = digitalRead(pins[i]);
+#endif
     char const* emoji;
     switch (toupper(pin_chars[i])) {
       case 'I': emoji = read ? "🔼" : "⬇️"; break;
@@ -437,7 +457,7 @@ void loop() {
 
           Serial.printf("=== p%d LED strip driver starting\n", pins[pin_index]);
           led_pin = pins[pin_index];;
-          leds = new Adafruit_NeoPixel(64, led_pin, NEO_GRB + NEO_KHZ800);
+          leds = new Adafruit_NeoPixel(32, led_pin, NEO_GRB + NEO_KHZ800);
           leds->begin();
         }
 

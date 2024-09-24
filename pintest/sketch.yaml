@@ -26,6 +26,15 @@ profiles:
       - EspSoftwareSerial (8.1.0)
       - Adafruit NeoPixel (1.12.3)
 
+  esp32:
+    fqbn: esp32:esp32:esp32:DebugLevel=verbose
+    platforms:
+      - platform: esp32:esp32 (3.0.5)
+        platform_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    libraries:
+      - EspSoftwareSerial (8.1.0)
+      - Adafruit NeoPixel (1.12.3)
+
   esp32s2:
     fqbn: esp32:esp32:esp32s2:CDCOnBoot=cdc,UploadMode=cdc,DebugLevel=verbose
     platforms:

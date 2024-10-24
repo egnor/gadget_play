@@ -60,9 +60,9 @@ constexpr std::array<int, 34> pins = {
               33, 34, 35, 36, 37, 38, 39,
   40, 41, 42, 43, 44, 45, 46,
 };
-static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 
 #elif CONFIG_IDF_TARGET_ESP32S3
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array pins = {
   // 19 and 20 are USB D- and D+
    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,

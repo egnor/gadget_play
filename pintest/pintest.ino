@@ -559,6 +559,7 @@ void setup() {
   esp_log_level_set("*", ESP_LOG_VERBOSE);
 #endif
   Serial.flush();
+  while (Serial.available() > 0) Serial.read();
 
   for (size_t i = 0; i < pins.size(); ++i) {
     Serial.printf("📍 p%d => INPUT\n", pins[i]);

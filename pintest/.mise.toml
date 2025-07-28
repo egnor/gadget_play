@@ -1,9 +1,5 @@
-[plugins]
-arduino-cli = "https://github.com/egnor/asdf-arduino-cli.git"
-
 [tools]
 arduino-cli = {version = "1.0.2"}
-# python = {version = "3.11", virtualenv = "build.tmp/python_venv"}
 
 [settings]
 experimental = true

@@ -8,6 +8,14 @@ profiles:
       - EspSoftwareSerial (8.1.0)
       - Adafruit NeoPixel (1.12.3)
 
+  feather_rp2040_rfm:
+    fqbn: rp2040:rp2040:adafruit_feather_rfm:dbgport=Serial,dbglvl=All
+    platforms:
+      - platform: rp2040:rp2040 (4.6.1)
+        platform_index_url: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+    libraries:
+      - Adafruit NeoPixel (1.12.3)
+
   pg_grippy:
     fqbn: esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=minimal,FlashMode=dio,FlashFreq=80,FlashSize=2M,UploadSpeed=921600,DebugLevel=verbose,EraseFlash=all
     platforms:

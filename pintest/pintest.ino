@@ -19,6 +19,15 @@ constexpr std::array<int, 24> pins = {
   PIN_NEOPIXEL, NEOPIXEL_I2C_POWER, BUTTON,
 };
 
+#elif defined(ARDUINO_ADAFRUIT_FEATHER_RP2040_RFM)
+static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
+constexpr std::array<int, 30> pins = {
+  0, 1, 2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15,
+  24, 25, 26, 27, 28, 29,
+  16, 17, 18, 19, 20, 21, 22, 23,
+  PIN_NEOPIXEL, PIN_BUTTON,
+};
+
 #elif defined(ARDUINO_QUALIA_S3_RGB666)
 static int sda_pin = SDA, scl_pin = SCL, rx_pin = -1, tx_pin = -1;
 constexpr std::array pins = {
@@ -70,8 +79,8 @@ constexpr std::array pins = {
       21,                         38, 39,
   40, 41, 42, 43, 44, 45, 46, 47, 48,
 };
-#else
 
+#else
 #error "Unsupported board"
 #endif
 
